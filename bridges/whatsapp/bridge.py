@@ -36,6 +36,7 @@ WHATSAPP_ACCESS_TOKEN = os.getenv("WHATSAPP_ACCESS_TOKEN", "").strip()
 WHATSAPP_PHONE_NUMBER_ID = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "").strip()
 WHATSAPP_WEBHOOK_VERIFY_TOKEN = os.getenv("WHATSAPP_WEBHOOK_VERIFY_TOKEN", "").strip()
 CEO_WHATSAPP_NUMBER = os.getenv("CEO_WHATSAPP_NUMBER", "").strip()
+WHATSAPP_GROUP_ID = os.getenv("WHATSAPP_GROUP_ID", "").strip()
 RELAY_URL = os.getenv("BUZZ_RELAY_URL", "ws://relay:8080")
 DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 if not os.path.exists(DATA_DIR) and os.path.exists("data"):
@@ -228,9 +229,12 @@ async def relay_outbound_listener():
 
                             tags = {t[0]: t[1] for t in event.get("tags", []) if len(t) >= 2}
                             phone = tags.get("whatsapp_phone")
-                            if phone:
+                            is_notify = tags.get("whatsapp_notify") == "true" or tags.get("telegram_notify") == "true"
+
+                            target = phone or (WHATSAPP_GROUP_ID if (is_notify or tags.get("channel") in ["support", "leads", "executive"]) else None)
+                            if target:
                                 content = event.get("content", "")
-                                await wa_client.send_whatsapp_message(phone, content)
+                                await wa_client.send_whatsapp_message(target, content)
                     except Exception as e:
                         logger.error(f"Error parsing event in wa relay listener: {e}")
 
