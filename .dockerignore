@@ -1,0 +1,14 @@
+.git
+.gitignore
+.env
+data/
+backups/
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.venv
+venv
+README.md
+SOUL.md
+SECURITY.md

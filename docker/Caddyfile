@@ -1,0 +1,24 @@
+{
+    email {$LETSENCRYPT_EMAIL:bonifadetechnologies@gmail.com}
+    admin off
+}
+
+{$DOMAIN_NAME:localhost} {
+    # Encode responses
+    encode gzip zstd
+
+    # Route WhatsApp Webhooks
+    handle_path /webhook/whatsapp* {
+        reverse_proxy bridge-whatsapp:8085
+    }
+
+    # Route Buzz WebSocket and Web UI
+    handle {
+        reverse_proxy relay:8080 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+}

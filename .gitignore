@@ -1,0 +1,29 @@
+# Environment & Secrets
+.env
+.env.local
+.env.production
+*.pem
+*.key
+*.crt
+
+# Runtime Data & Databases
+data/
+backups/
+*.sql
+*.rdb
+*.db
+*.sqlite
+*.sqlite3
+
+# Python Bytecode & Environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# System & OS Files
+.DS_Store
+Thumbs.db
+*.log

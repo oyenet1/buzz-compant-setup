@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN pip install --no-cache-dir \
+    "websockets>=12.0" \
+    "httpx>=0.27.0" \
+    "pydantic>=2.7.0" \
+    "cryptography>=42.0.0"
+
+COPY . /app
+
+CMD ["python3", "-u", "/app/bridges/telegram/bridge.py"]
