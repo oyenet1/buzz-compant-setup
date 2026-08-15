@@ -46,7 +46,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 DEFAULT_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "gemini")
-DEFAULT_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-2.5-flash")
+DEFAULT_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-3.7-flash")
 COMPANY_NAME = os.getenv("COMPANY_NAME", "Bonifade Technologies")
 DEPARTMENTS_DIR = os.getenv("DEPARTMENTS_DIR", "/app/departments")
 MARKETING_DIR = os.getenv("MARKETING_DIR", "/app/marketing")
@@ -144,13 +144,13 @@ class SwarmOrchestrator:
 
         # 1. Try Google Gemini with optimal model per department
         if GOOGLE_API_KEY and DEFAULT_PROVIDER in ["gemini", "auto"]:
-            # Route strategic, architectural and deep research tasks to Gemini 2.5 Pro, and operational tasks to Gemini 2.5 Flash
+            # Route strategic, architectural and deep research tasks to Gemini 2.5 Pro / 3.7 Flash, and operational tasks to Gemini 3.7 Flash
             if agent.agent_id in ["ceo", "cto", "legal-officer", "marketer-research"]:
-                primary_model = os.getenv("PRO_GEMINI_MODEL", "gemini-2.5-pro")
+                primary_model = os.getenv("PRO_GEMINI_MODEL", "gemini-3.7-flash")
             else:
-                primary_model = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-2.5-flash")
+                primary_model = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.7-flash")
 
-            for model_candidate in [primary_model, "gemini-2.5-flash", "gemini-1.5-pro"]:
+            for model_candidate in [primary_model, "gemini-3.7-flash", "gemini-2.5-pro", "gemini-2.5-flash"]:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_candidate}:generateContent?key={GOOGLE_API_KEY}"
                     payload = {

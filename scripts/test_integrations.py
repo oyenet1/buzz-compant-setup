@@ -34,12 +34,12 @@ async def test_gemini(api_key: str):
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Google Gemini API':<25}{NC} (No key set in .env)")
         return
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent?key={api_key}"
         payload = {"contents": [{"parts": [{"text": "Hello, respond with 'OK'"}]}]}
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.post(url, json=payload)
             if r.status_code == 200:
-                report("Google Gemini API", True, f"{GREEN}200 OK — Model gemini-2.5-flash responsive{NC}")
+                report("Google Gemini API", True, f"{GREEN}200 OK — Model gemini-3.7-flash responsive{NC}")
             else:
                 report("Google Gemini API", False, f"Status {r.status_code}: {r.text[:80]}")
     except Exception as e:
