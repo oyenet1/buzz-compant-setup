@@ -59,6 +59,7 @@ show_help() {
     echo -e "    ${GREEN}chat${NC}                   Open interactive terminal chat with the CEO / Swarm"
     echo -e "    ${GREEN}test-all${NC}               Run diagnostic connectivity tests on all AI & messaging APIs"
     echo -e "    ${GREEN}check-emails${NC}           Check unread emails in Gmail/IMAP inbox immediately"
+    echo -e "    ${GREEN}send-whatsapp${NC} <tel> <msg> Send direct WhatsApp message via Meta Cloud API"
     echo -e "    ${GREEN}send${NC} <channel> <msg>   Post a direct message into a Buzz channel"
     echo -e "    ${GREEN}psql${NC}                   Open an interactive PostgreSQL database shell"
     echo -e "    ${GREEN}redis-cli${NC}              Open an interactive Redis CLI session"
@@ -193,6 +194,33 @@ case "$1" in
 
     check-emails|read-emails)
         python3 bridges/smtp/bridge.py check
+        ;;
+
+    send-whatsapp)
+        shift
+        TO_PHONE="$1"
+        shift || true
+        WA_MSG="$*"
+        if [ -z "$TO_PHONE" ] || [ -z "$WA_MSG" ]; then
+            echo "Usage: ./manage.sh send-whatsapp <phone_number_e164> <message>"
+            echo "Example: ./manage.sh send-whatsapp +2347081353229 'Hello from Bonifade Swarm!'"
+            exit 1
+        fi
+        python3 -c "
+import asyncio, os, sys
+sys.path.insert(0, 'bridges/whatsapp')
+from bridge import WhatsAppClient
+
+async def send():
+    client = WhatsAppClient()
+    success = await client.send_whatsapp_message('$TO_PHONE', '$WA_MSG')
+    if success:
+        print('✓ WhatsApp message dispatched via Meta API.')
+    else:
+        print('✗ Failed to dispatch WhatsApp message. Check WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID.')
+
+asyncio.run(send())
+"
         ;;
 
     send)
