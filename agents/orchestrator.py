@@ -210,9 +210,9 @@ class SwarmOrchestrator:
                 except Exception as e:
                     logger.warning(f"Anthropic Claude ({claude_model}) failed: {e}")
 
-        # 3. Fallback: OpenAI Direct (o3-mini Reasoning / GPT-4.5 / GPT-4o)
+        # 3. Fallback: OpenAI Direct (GPT-5.3 / GPT-5 / o3-mini Reasoning / GPT-4.5 / GPT-4o)
         if OPENAI_API_KEY:
-            for openai_model in ["o3-mini", "gpt-4.5-preview", "gpt-4o", "gpt-4o-mini"]:
+            for openai_model in ["gpt-5.3", "gpt-5", "o3-mini", "gpt-4.5-preview", "gpt-4o", "gpt-4o-mini"]:
                 try:
                     async with httpx.AsyncClient(timeout=60.0) as client:
                         payload_oa = {
@@ -354,6 +354,8 @@ class SwarmOrchestrator:
                 "deepseek/deepseek-v4-flash",
                 "zhipu/glm-5.2",
                 "minimax/minimax-3",
+                "openai/gpt-5.3",
+                "openai/gpt-5",
                 "google/gemini-3.7-flash",
                 "anthropic/claude-3.7-sonnet",
                 "x-ai/grok-3",
