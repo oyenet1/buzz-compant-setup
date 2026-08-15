@@ -142,15 +142,11 @@ class SwarmOrchestrator:
         if context:
             full_system += f"\nConversation Context:\n{context}\n"
 
-        # 1. Try Google Gemini with optimal model per department
+        # 1. Try Google Gemini (Gemini 3.7 Flash Reasoning Engine)
         if GOOGLE_API_KEY and DEFAULT_PROVIDER in ["gemini", "auto"]:
-            # Route strategic, architectural and deep research tasks to Gemini 2.5 Pro / 3.7 Flash, and operational tasks to Gemini 3.7 Flash
-            if agent.agent_id in ["ceo", "cto", "legal-officer", "marketer-research"]:
-                primary_model = os.getenv("PRO_GEMINI_MODEL", "gemini-3.7-flash")
-            else:
-                primary_model = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.7-flash")
+            primary_model = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.7-flash")
 
-            for model_candidate in [primary_model, "gemini-3.7-flash", "gemini-2.5-pro", "gemini-2.5-flash"]:
+            for model_candidate in [primary_model, "gemini-3.7-flash"]:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_candidate}:generateContent?key={GOOGLE_API_KEY}"
                     payload = {
@@ -176,7 +172,7 @@ class SwarmOrchestrator:
                         "https://openrouter.ai/api/v1/chat/completions",
                         headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
                         json={
-                            "model": "anthropic/claude-3.5-sonnet" if "claude" in DEFAULT_MODEL else "google/gemini-2.5-flash",
+                            "model": "anthropic/claude-3.5-sonnet" if "claude" in DEFAULT_MODEL else "google/gemini-3.7-flash",
                             "messages": [
                                 {"role": "system", "content": full_system},
                                 {"role": "user", "content": prompt},

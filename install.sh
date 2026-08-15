@@ -359,13 +359,14 @@ CORS_ORIGINS=*
 
 # ── 5. AI LLM Providers ───────────────────────────────────────
 GOOGLE_API_KEY=${CFG_GOOGLE_API_KEY}
-DEFAULT_GEMINI_MODEL=gemini-2.5-flash
+DEFAULT_GEMINI_MODEL=gemini-3.7-flash
+PRO_GEMINI_MODEL=gemini-3.7-flash
 OPENAI_API_KEY=${CFG_OPENAI_API_KEY}
 OPENROUTER_API_KEY=${CFG_OPENROUTER_API_KEY}
 ANTHROPIC_API_KEY=
 MOONSHOT_API_KEY=
 DEFAULT_AI_PROVIDER=gemini
-DEFAULT_AI_MODEL=gemini-2.5-flash
+DEFAULT_AI_MODEL=gemini-3.7-flash
 FIRECRAWL_API_KEY=${CFG_FIRECRAWL_API_KEY}
 
 # ── 6. Telegram Messaging Bridge ──────────────────────────────
