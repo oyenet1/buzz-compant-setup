@@ -457,7 +457,7 @@ echo -e "  ⚙ Building AI Orchestrator & Channel Bridges..."
 $DOCKER_COMPOSE_CMD build --no-cache agent-orchestrator bridge-telegram bridge-whatsapp bridge-smtp
 
 echo -e "  ⚙ Starting Buzz Swarm stack in background..."
-$DOCKER_COMPOSE_CMD up -d
+./manage.sh start
 
 echo -e "  ⚙ Waiting for database & relay to initialize..."
 sleep 5

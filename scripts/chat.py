@@ -28,7 +28,7 @@ PURPLE = "\033[0;35m"
 BOLD = "\033[1m"
 NC = "\033[0m"
 
-RELAY_URL = os.getenv("BUZZ_RELAY_URL", "ws://127.0.0.1:8080")
+RELAY_URL = os.getenv("BUZZ_RELAY_URL", "ws://127.0.0.1:4005")
 
 
 async def chat_loop():

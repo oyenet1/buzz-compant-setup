@@ -125,7 +125,7 @@ chmod +x install.sh
 
 | Agent Handle | Department / Role | System Persona & Responsibilities |
 |---|---|---|
-| **`@ceo`** | **Executive Leadership** | Strategic direction, delegation, cross-department oversight, and final approvals. |
+| **`@ceo`** | **Fade_networker** | Strategic direction, delegation, cross-department oversight, and final approvals. |
 | **`@cto`** | **Technical Architecture** | Stack selection, architecture design, performance benchmarks, and RFC reviews. |
 | **`@fullstack-dev`** | **Engineering** | Fullstack web apps, REST/GraphQL APIs, database models, frontend interfaces. |
 | **`@qa-tester`** | **Quality Assurance** | Test plan automation, unit/integration testing, regression audits, delivery sign-off. |
@@ -171,11 +171,22 @@ The `./manage.sh` controller script provides commands to run and inspect your sw
 ./manage.sh logs agent-orchestrator
 ./manage.sh logs bridge-telegram
 
-# Interactive terminal chat with the CEO / Swarm
+# Interactive terminal chat with Fade_networker / Swarm
 ./manage.sh chat
 
 # Run end-to-end diagnostic test on all AI & messaging APIs
 ./manage.sh test-all
+
+# Check unread emails in Gmail/IMAP inbox immediately
+./manage.sh check-emails
+
+# Send a direct WhatsApp message via Meta Cloud API
+./manage.sh send-whatsapp +2347081353229 "Hello from Bonifade Swarm!"
+
+# Cloudflare R2 object storage commands
+./manage.sh r2-status
+./manage.sh r2-backup
+./manage.sh r2-sync-marketing
 
 # Gracefully restart services
 ./manage.sh restart

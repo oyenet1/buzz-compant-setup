@@ -27,7 +27,7 @@ from nostr_util import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("seed")
 
-RELAY_URL = os.getenv("BUZZ_RELAY_URL", "ws://127.0.0.1:8080")
+RELAY_URL = os.getenv("BUZZ_RELAY_URL", "ws://127.0.0.1:4005")
 COMPANY_NAME = os.getenv("COMPANY_NAME", "Bonifade Technologies")
 DATA_DIR = os.getenv("DATA_DIR", "data")
 
@@ -43,7 +43,7 @@ CHANNELS = [
 ]
 
 BASELINE_GOALS = [
-    {"title": "First paying client", "target": "1 signed contract", "owner": "CEO", "deadline": "2026-09-30"},
+    {"title": "First paying client", "target": "1 signed contract", "owner": "Fade_networker (CEO)", "deadline": "2026-09-30"},
     {"title": "Qualified leads pipeline", "target": "100 leads in leads DB", "owner": "Marketer Research", "deadline": "2026-09-30"},
     {"title": "Outreach launched", "target": "First 500-email campaign sent", "owner": "Marketer Growth", "deadline": "2026-08-31"},
     {"title": "Company website live", "target": "bonifadetechnologies.com current + lead capture", "owner": "Fullstack Dev", "deadline": "2026-08-15"},

@@ -184,7 +184,7 @@ async def main():
     else:
         test_port("Redis Pub/Sub", os.getenv("REDIS_HOST", "127.0.0.1"), int(os.getenv("REDIS_PORT", "6379")))
 
-    await test_relay(os.getenv("BUZZ_RELAY_URL", "ws://127.0.0.1:8080"))
+    await test_relay(os.getenv("BUZZ_RELAY_URL", "ws://127.0.0.1:4005"))
 
     print(f"\n{BOLD}2. AI Neural Providers (Swarm Brain):{NC}")
     await test_gemini(os.getenv("GOOGLE_API_KEY", ""))
