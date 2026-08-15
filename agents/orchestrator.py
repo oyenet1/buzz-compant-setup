@@ -185,9 +185,9 @@ class SwarmOrchestrator:
                 except Exception as e:
                     logger.warning(f"Google Gemini ({model_candidate}) failed: {e}")
 
-        # 2. Fallback: Anthropic Claude Direct (Claude 3.7 Sonnet Hybrid Thinking / Claude 3.5 Sonnet)
+        # 2. Fallback: Anthropic Claude Direct (Claude Opus 4.8 / Claude 3.7 Sonnet / 3.5 Sonnet)
         if ANTHROPIC_API_KEY:
-            for claude_model in ["claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022"]:
+            for claude_model in ["claude-4-8-opus", "claude-4-opus", "claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022"]:
                 try:
                     async with httpx.AsyncClient(timeout=60.0) as client:
                         resp = await client.post(
@@ -222,7 +222,6 @@ class SwarmOrchestrator:
                                 {"role": "user", "content": prompt},
                             ],
                         }
-                        # o3-mini uses max_completion_tokens
                         if openai_model.startswith("o"):
                             payload_oa["max_completion_tokens"] = 4096
                         resp = await client.post(
@@ -236,9 +235,9 @@ class SwarmOrchestrator:
                 except Exception as e:
                     logger.warning(f"OpenAI ({openai_model}) failed: {e}")
 
-        # 4. Fallback: xAI Grok Direct (Grok-3 / Grok-2)
+        # 4. Fallback: xAI Grok Direct (Grok-4.5 / Grok-4 / Grok-3 / Grok-2)
         if XAI_API_KEY:
-            for grok_model in ["grok-3", "grok-3-beta", "grok-2-latest"]:
+            for grok_model in ["grok-4.5", "grok-4", "grok-3", "grok-3-beta", "grok-2-latest"]:
                 try:
                     async with httpx.AsyncClient(timeout=60.0) as client:
                         resp = await client.post(
@@ -258,9 +257,9 @@ class SwarmOrchestrator:
                 except Exception as e:
                     logger.warning(f"xAI Grok ({grok_model}) failed: {e}")
 
-        # 5. Fallback: DeepSeek Direct (DeepSeek-R1 Reasoner / DeepSeek-V3)
+        # 5. Fallback: DeepSeek Direct (DeepSeek V4 Flash / R1 Reasoner / V3)
         if DEEPSEEK_API_KEY:
-            for ds_model in ["deepseek-reasoner", "deepseek-chat"]:
+            for ds_model in ["deepseek-v4-flash", "deepseek-v4", "deepseek-reasoner", "deepseek-chat"]:
                 try:
                     async with httpx.AsyncClient(timeout=60.0) as client:
                         resp = await client.post(
@@ -280,9 +279,9 @@ class SwarmOrchestrator:
                 except Exception as e:
                     logger.warning(f"DeepSeek ({ds_model}) failed: {e}")
 
-        # 6. Fallback: GLM / Zhipu Direct (GLM-4-Plus)
+        # 6. Fallback: GLM / Zhipu Direct (GLM-5.2 / GLM-5 / GLM-4-Plus)
         if GLM_API_KEY:
-            for glm_model in ["glm-4-plus", "glm-4-flash"]:
+            for glm_model in ["glm-5.2", "glm-5", "glm-4-plus", "glm-4-flash"]:
                 try:
                     async with httpx.AsyncClient(timeout=60.0) as client:
                         resp = await client.post(
@@ -302,26 +301,27 @@ class SwarmOrchestrator:
                 except Exception as e:
                     logger.warning(f"GLM ({glm_model}) failed: {e}")
 
-        # 7. Fallback: MiniMax Direct (MiniMax-Text-01)
+        # 7. Fallback: MiniMax Direct (MiniMax 3 / MiniMax-Text-01)
         if MINIMAX_API_KEY:
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
-                        "https://api.minimax.chat/v1/text/chatcompletion_v2",
-                        headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
-                        json={
-                            "model": "MiniMax-Text-01",
-                            "messages": [
-                                {"role": "system", "content": full_system},
-                                {"role": "user", "content": prompt},
-                            ],
-                        },
-                    )
-                    if resp.status_code == 200:
-                        res_json = resp.json()
-                        return res_json["choices"][0]["message"]["content"]
-            except Exception as e:
-                logger.warning(f"MiniMax invocation failed: {e}")
+            for mm_model in ["minimax-3", "MiniMax-Text-03", "MiniMax-Text-01"]:
+                try:
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(
+                            "https://api.minimax.chat/v1/text/chatcompletion_v2",
+                            headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
+                            json={
+                                "model": mm_model,
+                                "messages": [
+                                    {"role": "system", "content": full_system},
+                                    {"role": "user", "content": prompt},
+                                ],
+                            },
+                        )
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            return res_json["choices"][0]["message"]["content"]
+                except Exception as e:
+                    logger.warning(f"MiniMax ({mm_model}) failed: {e}")
 
         # 8. Fallback: Meta AI / Llama / Muse Direct (Llama 3.3 70B / Meta Muse)
         if META_AI_API_KEY:
@@ -346,9 +346,14 @@ class SwarmOrchestrator:
             except Exception as e:
                 logger.warning(f"Meta AI / Llama invocation failed: {e}")
 
-        # 9. Fallback: OpenRouter Universal Gateway (Access to Claude 3.7, Grok 3, DeepSeek R1, Llama 3.3, MiniMax, GLM, GPT-4.5)
+        # 9. Fallback: OpenRouter Universal Gateway (Access to Claude Opus 4.8, Grok 4.5, DeepSeek V4, GLM 5.2, MiniMax 3)
         if OPENROUTER_API_KEY:
             openrouter_models = [
+                "anthropic/claude-4-8-opus",
+                "x-ai/grok-4.5",
+                "deepseek/deepseek-v4-flash",
+                "zhipu/glm-5.2",
+                "minimax/minimax-3",
                 "google/gemini-3.7-flash",
                 "anthropic/claude-3.7-sonnet",
                 "x-ai/grok-3",
