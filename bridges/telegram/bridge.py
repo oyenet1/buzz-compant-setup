@@ -202,12 +202,17 @@ class TelegramBridge:
 
                                 tg_chat_id = tags.get("telegram_chat_id")
                                 tg_msg_id = tags.get("telegram_msg_id")
+                                is_notify = tags.get("telegram_notify") == "true"
 
-                                # If it was a reply to a telegram thread or designated for telegram group
-                                target_chat = tg_chat_id or TELEGRAM_GROUP_CHAT_ID or CEO_TELEGRAM_CHAT_ID
-                                if target_chat and content:
+                                if tg_chat_id:
                                     reply_id = int(tg_msg_id) if tg_msg_id and tg_msg_id.isdigit() else None
-                                    await self.send_telegram_message(target_chat, content, reply_to_message_id=reply_id)
+                                    await self.send_telegram_message(tg_chat_id, content, reply_to_message_id=reply_id)
+                                elif is_notify or tags.get("channel") in ["support", "leads", "executive"]:
+                                    # Forward to company group and CEO directly
+                                    if TELEGRAM_GROUP_CHAT_ID:
+                                        await self.send_telegram_message(TELEGRAM_GROUP_CHAT_ID, content)
+                                    if CEO_TELEGRAM_CHAT_ID and CEO_TELEGRAM_CHAT_ID != TELEGRAM_GROUP_CHAT_ID:
+                                        await self.send_telegram_message(CEO_TELEGRAM_CHAT_ID, content)
 
                         except Exception as e:
                             logger.error(f"Error handling relay message in tg bridge: {e}")

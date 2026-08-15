@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 """
-Bonifade Technologies Swarm — SMTP & Email Bridge for Buzz Relay.
-Handles outbound transactional emails with anti-spam pacing,
-and polls inbound IMAP emails into Buzz channels.
+Bonifade Technologies Swarm — SMTP & IMAP Email Bridge for Buzz Relay.
+Handles:
+1. Outbound transactional emails with anti-spam rate limits.
+2. Inbound IMAP checking for Gmail and custom mailboxes: reads unread emails,
+   parses sender/subject/body, bridges into Buzz #support / #leads channels,
+   and triggers instant Telegram/WhatsApp notifications to the CEO & team.
 """
 
 import asyncio
 from datetime import datetime
-from email.header import decode_header
+from email.header import decode_header, make_header
 import email.message
 import email.utils
 import imaplib
@@ -17,9 +20,12 @@ import os
 import smtplib
 import sys
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
-import websockets
+try:
+    import websockets
+except ImportError:
+    websockets = None
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../agents")))
 from nostr_util import (
@@ -30,11 +36,13 @@ from nostr_util import (
     get_pubkey_from_privkey,
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] [SMTP-Bridge] %(message)s",
-)
-logger = logging.getLogger("smtp_bridge")
+# Terminal Colors
+CYAN = "\033[0;36m"
+GREEN = "\033[0;32m"
+YELLOW = "\033[1;33m"
+RED = "\033[0;31m"
+BOLD = "\033[1m"
+NC = "\033[0m"
 
 SMTP_ENABLED = os.getenv("SMTP_ENABLED", "true").lower() in ["true", "1", "yes"]
 SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
@@ -48,16 +56,28 @@ EMAIL_DAILY_LIMIT = int(os.getenv("EMAIL_DAILY_LIMIT", "500"))
 EMAIL_HOURLY_LIMIT = int(os.getenv("EMAIL_HOURLY_LIMIT", "200"))
 EMAIL_SEND_INTERVAL_SECONDS = int(os.getenv("EMAIL_SEND_INTERVAL_SECONDS", "20"))
 
-IMAP_ENABLED = os.getenv("IMAP_ENABLED", "false").lower() in ["true", "1", "yes"]
+IMAP_ENABLED = os.getenv("IMAP_ENABLED", "true").lower() in ["true", "1", "yes"]
 IMAP_HOST = os.getenv("IMAP_HOST", "imap.gmail.com")
 IMAP_PORT = int(os.getenv("IMAP_PORT", "993"))
 IMAP_USER = os.getenv("IMAP_USER", SMTP_USER)
 IMAP_PASSWORD = os.getenv("IMAP_PASSWORD", SMTP_APP_PASSWORD)
 
 RELAY_URL = os.getenv("BUZZ_RELAY_URL", "ws://relay:8080")
+COMPANY_NAME = os.getenv("COMPANY_NAME", "Bonifade Technologies")
 DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 if not os.path.exists(DATA_DIR) and os.path.exists("data"):
     DATA_DIR = "data"
+
+
+def decode_mime_header(header_value: Optional[str]) -> str:
+    """Decodes MIME encoded-words header into clean Unicode text."""
+    if not header_value:
+        return ""
+    try:
+        decoded = decode_header(header_value)
+        return str(make_header(decoded))
+    except Exception:
+        return str(header_value)
 
 
 class EmailBridge:
@@ -69,6 +89,7 @@ class EmailBridge:
         self.last_day = datetime.now().day
         self.last_hour = datetime.now().hour
         self.last_send_time = 0.0
+        self.processed_msg_ids = set()
 
     def _load_or_create_keys(self):
         key_file = os.path.join(DATA_DIR, "smtp_bridge_keys.json")
@@ -110,7 +131,6 @@ class EmailBridge:
         if not self._check_rate_limits():
             return False
 
-        # Enforce spacing interval
         elapsed = time.time() - self.last_send_time
         if elapsed < EMAIL_SEND_INTERVAL_SECONDS:
             time.sleep(EMAIL_SEND_INTERVAL_SECONDS - elapsed)
@@ -139,65 +159,124 @@ class EmailBridge:
             self.daily_sent += 1
             self.hourly_sent += 1
             self.last_send_time = time.time()
-            logger.info(f"Sent email to {to_email} with subject '{subject}' (Day: {self.daily_sent}/{EMAIL_DAILY_LIMIT})")
+            logger.info(f"✓ Sent email to {to_email} with subject '{subject}' (Sent today: {self.daily_sent}/{EMAIL_DAILY_LIMIT})")
             return True
         except Exception as e:
             logger.error(f"Error sending SMTP email to {to_email}: {e}")
             return False
 
-    async def poll_inbound_imap(self):
-        """Polls IMAP mailbox for unread emails and bridges them into Buzz."""
-        if not IMAP_ENABLED or not IMAP_PASSWORD:
-            return
+    def fetch_unread_emails_sync(self) -> List[Dict[str, Any]]:
+        """Connects to IMAP (Gmail or custom server) and fetches unread messages."""
+        if not IMAP_PASSWORD:
+            return []
 
-        logger.info("Starting IMAP email polling worker...")
-        while True:
-            try:
-                mail = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT)
-                mail.login(IMAP_USER, IMAP_PASSWORD)
-                mail.select("INBOX")
+        results = []
+        try:
+            mail = imaplib.IMAP4_SSL(IMAP_HOST, IMAP_PORT, timeout=20)
+            mail.login(IMAP_USER, IMAP_PASSWORD)
+            mail.select("INBOX")
 
-                status, messages = mail.search(None, "UNSEEN")
-                if status == "OK" and messages[0]:
-                    for num in messages[0].split():
+            # Search for unread / unseen emails
+            status, messages = mail.search(None, "UNSEEN")
+            if status == "OK" and messages[0]:
+                for num in messages[0].split():
+                    try:
                         _, data = mail.fetch(num, "(RFC822)")
                         raw_email = data[0][1]
                         msg = email.message_from_bytes(raw_email)
 
-                        subject = msg.get("Subject", "(No Subject)")
-                        from_addr = msg.get("From", "Unknown Sender")
+                        message_id = msg.get("Message-ID", str(num))
+                        if message_id in self.processed_msg_ids:
+                            continue
+                        self.processed_msg_ids.add(message_id)
+
+                        subject = decode_mime_header(msg.get("Subject", "(No Subject)"))
+                        from_addr = decode_mime_header(msg.get("From", "Unknown Sender"))
+                        date_str = msg.get("Date", "")
 
                         # Extract text payload
                         body = ""
                         if msg.is_multipart():
                             for part in msg.walk():
-                                if part.get_content_type() == "text/plain":
-                                    body = part.get_payload(decode=True).decode(errors="ignore")
-                                    break
+                                ctype = part.get_content_type()
+                                cdisp = str(part.get("Content-Disposition"))
+                                if ctype == "text/plain" and "attachment" not in cdisp:
+                                    payload = part.get_payload(decode=True)
+                                    if payload:
+                                        body = payload.decode(errors="ignore")
+                                        break
                         else:
-                            body = msg.get_payload(decode=True).decode(errors="ignore")
+                            payload = msg.get_payload(decode=True)
+                            if payload:
+                                body = payload.decode(errors="ignore")
 
-                        logger.info(f"Inbound email from {from_addr}: '{subject}'")
+                        body_snippet = body.strip()[:1500] if body else "(No plain text content)"
 
-                        # Bridge to Buzz Relay
+                        results.append({
+                            "message_id": message_id,
+                            "from": from_addr,
+                            "subject": subject,
+                            "date": date_str,
+                            "body": body_snippet,
+                        })
+                    except Exception as parse_err:
+                        logger.error(f"Error parsing email message {num}: {parse_err}")
+
+            mail.close()
+            mail.logout()
+        except Exception as e:
+            logger.error(f"IMAP fetch error: {e}")
+
+        return results
+
+    async def poll_inbound_imap(self):
+        """Background worker that checks IMAP every 60 seconds and publishes to Buzz."""
+        if not IMAP_ENABLED or not IMAP_PASSWORD:
+            logger.info("IMAP reading is idle. Set SMTP_APP_PASSWORD in .env to activate Gmail/IMAP reading.")
+            while True:
+                await asyncio.sleep(3600)
+
+        logger.info(f"Starting IMAP email polling worker on {IMAP_HOST}:{IMAP_PORT} ({IMAP_USER})...")
+        while True:
+            try:
+                unread = await asyncio.to_thread(self.fetch_unread_emails_sync)
+                if unread:
+                    logger.info(f"Found {len(unread)} new unread email(s) in {IMAP_USER}.")
+                    for mail_item in unread:
+                        from_sender = mail_item["from"]
+                        subj = mail_item["subject"]
+                        body = mail_item["body"]
+
+                        content = (
+                            f"📨 **Incoming Email Received**\n\n"
+                            f"• **From:** `{from_sender}`\n"
+                            f"• **Subject:** *{subj}*\n"
+                            f"• **Date:** {mail_item['date']}\n\n"
+                            f"**Message Body:**\n```\n{body}\n```\n\n"
+                            f"_(Forwarded automatically to Telegram & Buzz #support by Email Bridge)_"
+                        )
+
+                        # Tag to trigger Telegram & Buzz support channel
+                        tags = [
+                            ["channel", "support"],
+                            ["telegram_notify", "true"],
+                            ["email_from", from_sender],
+                            ["email_subject", subj],
+                        ]
+
                         event = create_event(
                             priv_hex=self.privkey,
                             kind=KIND_STREAM_MESSAGE,
-                            content=f"[Incoming Email from {from_addr}]\nSubject: {subject}\n\n{body[:1500]}",
-                            tags=[
-                                ["channel", "support"],
-                                ["email_from", from_addr],
-                                ["email_subject", subject],
-                            ],
+                            content=content,
+                            tags=tags,
                         )
 
                         if self.ws:
                             await self.ws.send(json.dumps(["EVENT", event]))
+                            logger.info(f"Published email event to Buzz: '{subj}'")
 
-                mail.close()
-                mail.logout()
             except Exception as e:
-                logger.error(f"IMAP polling error: {e}")
+                logger.error(f"IMAP polling loop error: {e}")
 
             await asyncio.sleep(60)
 
@@ -208,7 +287,7 @@ class EmailBridge:
                 logger.info(f"Connecting to Buzz Relay at {RELAY_URL}...")
                 async with websockets.connect(RELAY_URL, max_size=10 * 1024 * 1024) as ws:
                     self.ws = ws
-                    logger.info("SMTP Bridge connected to Buzz Relay.")
+                    logger.info("Email Bridge connected to Buzz Relay.")
 
                     await ws.send(json.dumps(["REQ", "smtp-sub-01", {"kinds": [KIND_STREAM_MESSAGE]}]))
 
@@ -230,15 +309,15 @@ class EmailBridge:
                                     content = event.get("content", "")
                                     await asyncio.to_thread(self.send_email_sync, to_email, subject, content)
                         except Exception as e:
-                            logger.error(f"Error handling event in smtp bridge: {e}")
+                            logger.error(f"Error handling event in email bridge: {e}")
 
             except Exception as e:
-                logger.warning(f"SMTP relay listener error: {e}. Reconnecting in 5s...")
+                logger.warning(f"Email relay listener error: {e}. Reconnecting in 5s...")
                 await asyncio.sleep(5)
 
     async def run(self):
-        if not SMTP_ENABLED:
-            logger.info("SMTP_ENABLED is false. Bridge is disabled.")
+        if not SMTP_ENABLED and not IMAP_ENABLED:
+            logger.info("Email Bridge is disabled.")
             while True:
                 await asyncio.sleep(3600)
 
@@ -248,9 +327,29 @@ class EmailBridge:
         )
 
 
-if __name__ == "__main__":
+def check_inbox_cli():
+    """Standalone CLI command to check and print unread emails immediately."""
+    print(f"\n{CYAN}{BOLD}══ Checking Inbox for {IMAP_USER} ({IMAP_HOST}) ══════════════════════{NC}")
     bridge = EmailBridge()
-    try:
-        asyncio.run(bridge.run())
-    except KeyboardInterrupt:
-        logger.info("Stopping SMTP bridge...")
+    unread = bridge.fetch_unread_emails_sync()
+    if not unread:
+        print(f"  {GREEN}✓ No unread emails in inbox.{NC}")
+    else:
+        print(f"  {YELLOW}Found {len(unread)} unread email(s):{NC}\n")
+        for i, m in enumerate(unread, 1):
+            print(f"  {BOLD}[{i}] From:{NC}    {m['from']}")
+            print(f"      {BOLD}Subject:{NC} {m['subject']}")
+            print(f"      {BOLD}Date:{NC}    {m['date']}")
+            print(f"      {BOLD}Preview:{NC} {m['body'][:120]}...\n")
+    print(f"{CYAN}{BOLD}═════════════════════════════════════════════════════════════════════════{NC}\n")
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] in ["check", "read", "inbox"]:
+        check_inbox_cli()
+    else:
+        bridge = EmailBridge()
+        try:
+            asyncio.run(bridge.run())
+        except KeyboardInterrupt:
+            logger.info("Stopping Email bridge...")

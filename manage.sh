@@ -58,6 +58,7 @@ show_help() {
     echo -e "    ${GREEN}seed${NC}                   Re-seed company channels, baseline goals & department agents"
     echo -e "    ${GREEN}chat${NC}                   Open interactive terminal chat with the CEO / Swarm"
     echo -e "    ${GREEN}test-all${NC}               Run diagnostic connectivity tests on all AI & messaging APIs"
+    echo -e "    ${GREEN}check-emails${NC}           Check unread emails in Gmail/IMAP inbox immediately"
     echo -e "    ${GREEN}send${NC} <channel> <msg>   Post a direct message into a Buzz channel"
     echo -e "    ${GREEN}psql${NC}                   Open an interactive PostgreSQL database shell"
     echo -e "    ${GREEN}redis-cli${NC}              Open an interactive Redis CLI session"
@@ -162,6 +163,10 @@ case "$1" in
 
     test-all)
         python3 scripts/test_integrations.py
+        ;;
+
+    check-emails|read-emails)
+        python3 bridges/smtp/bridge.py check
         ;;
 
     send)
