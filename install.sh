@@ -203,6 +203,24 @@ prompt_var "OpenAI API Key (Optional GPT-4o)" "${OPENAI_API_KEY:-}" CFG_OPENAI_A
 prompt_var "OpenRouter API Key (Optional Unified Gateway)" "${OPENROUTER_API_KEY:-}" CFG_OPENROUTER_API_KEY "true"
 prompt_var "Firecrawl API Key (Web Scraping & Lead Discovery)" "${FIRECRAWL_API_KEY:-}" CFG_FIRECRAWL_API_KEY "true"
 
+# Database Mode (Local Docker vs External Cloud DB)
+echo ""
+echo -e "${PURPLE}${BOLD}── Database Configuration (PostgreSQL 17) ───────────────────────${NC}"
+echo -ne "  ${BOLD}Use local Docker PostgreSQL container?${NC} [Y = Local Docker, N = External Cloud DB (Supabase/Neon/RDS)] [Y/n]: "
+read -r USE_LOCAL_DB_ANS
+USE_LOCAL_DB_ANS="${USE_LOCAL_DB_ANS:-Y}"
+if [[ "$USE_LOCAL_DB_ANS" =~ ^[Nn] ]]; then
+    CFG_USE_EXTERNAL_DB="true"
+    prompt_var "External PostgreSQL DATABASE_URL (e.g. postgres://...)" "${DATABASE_URL:-}" CFG_EXTERNAL_DB_URL "true"
+else
+    CFG_USE_EXTERNAL_DB="false"
+    CFG_EXTERNAL_DB_URL=""
+fi
+
+# Cloudflare R2 / S3 Storage
+echo ""
+echo -e "${PURPLE}${BOLD}── Cloudflare R2 Object Storage (Media & Zero-Egress Backups) ───${NC}"
+
 echo ""
 echo -e "${PURPLE}${BOLD}── Communication Channels & Messaging Bridges ──────────────────${NC}"
 
@@ -330,12 +348,13 @@ PUBLIC_URL=${PUBLIC_URL}
 RELAY_PUBLIC_URL=${RELAY_PUBLIC_URL}
 
 # ── 2. Database (PostgreSQL 17) ───────────────────────────────
+USE_EXTERNAL_POSTGRES=${CFG_USE_EXTERNAL_DB}
 POSTGRES_USER=buzz
 POSTGRES_PASSWORD=${POSTGRES_PWD}
 POSTGRES_DB=buzz
 POSTGRES_HOST=postgres
 POSTGRES_PORT=5432
-DATABASE_URL=postgres://buzz:${POSTGRES_PWD}@postgres:5432/buzz
+DATABASE_URL=${CFG_EXTERNAL_DB_URL:-postgres://buzz:${POSTGRES_PWD}@postgres:5432/buzz}
 DB_POOL_SIZE=25
 
 # ── 3. Cache & PubSub (Redis 7) ───────────────────────────────
