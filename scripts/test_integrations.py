@@ -64,6 +64,42 @@ async def test_openai(api_key: str):
         report("OpenAI API", False, str(e))
 
 
+async def test_anthropic(api_key: str):
+    if not api_key:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Anthropic Claude API':<25}{NC} (No key set in .env)")
+        return
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                "https://api.anthropic.com/v1/models",
+                headers={"x-api-key": api_key, "anthropic-version": "2023-06-01"},
+            )
+            if r.status_code in [200, 400]:
+                report("Anthropic Claude API", True, f"{GREEN}200 OK — Token verified{NC}")
+            else:
+                report("Anthropic Claude API", False, f"Status {r.status_code}: {r.text[:80]}")
+    except Exception as e:
+        report("Anthropic Claude API", False, str(e))
+
+
+async def test_xai(api_key: str):
+    if not api_key:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'xAI Grok API':<25}{NC} (No key set in .env)")
+        return
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                "https://api.x.ai/v1/models",
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if r.status_code == 200:
+                report("xAI Grok API", True, f"{GREEN}200 OK — Token verified{NC}")
+            else:
+                report("xAI Grok API", False, f"Status {r.status_code}: {r.text[:80]}")
+    except Exception as e:
+        report("xAI Grok API", False, str(e))
+
+
 async def test_openrouter(api_key: str):
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'OpenRouter API':<25}{NC} (No key set in .env)")
@@ -188,7 +224,9 @@ async def main():
 
     print(f"\n{BOLD}2. AI Neural Providers (Swarm Brain):{NC}")
     await test_gemini(os.getenv("GOOGLE_API_KEY", ""))
+    await test_anthropic(os.getenv("ANTHROPIC_API_KEY", ""))
     await test_openai(os.getenv("OPENAI_API_KEY", ""))
+    await test_xai(os.getenv("XAI_API_KEY", "") or os.getenv("GROK_API_KEY", ""))
     await test_openrouter(os.getenv("OPENROUTER_API_KEY", ""))
     await test_firecrawl(os.getenv("FIRECRAWL_API_KEY", ""))
 

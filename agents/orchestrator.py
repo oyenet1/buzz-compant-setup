@@ -41,10 +41,18 @@ logger = logging.getLogger("orchestrator")
 
 # Configuration from Environment
 RELAY_URL = os.getenv("BUZZ_RELAY_URL", "ws://relay:8080")
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY", "").strip()
+DEFAULT_GEMINI_MODEL = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.5-flash").strip()
+PRO_GEMINI_MODEL = os.getenv("PRO_GEMINI_MODEL", "gemini-3.7-flash").strip()
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "").strip()
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "").strip()
+XAI_API_KEY = (os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY") or "").strip()
+MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY", "").strip()
+GLM_API_KEY = (os.getenv("GLM_API_KEY") or os.getenv("ZHIPU_API_KEY") or "").strip()
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
+
 DEFAULT_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "gemini")
 DEFAULT_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-3.5-flash")
 COMPANY_NAME = os.getenv("COMPANY_NAME", "Bonifade Technologies")
@@ -142,11 +150,12 @@ class SwarmOrchestrator:
         if context:
             full_system += f"\nConversation Context:\n{context}\n"
 
-        # 1. Try Google Gemini (Gemini 3.5 Flash Engine)
-        if GOOGLE_API_KEY and DEFAULT_PROVIDER in ["gemini", "auto"]:
-            primary_model = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.5-flash")
+        # 1. Primary: Google Gemini (3.7 Flash for Advanced Roles, 3.5 Flash for Operational Roles)
+        if GOOGLE_API_KEY:
+            is_advanced_role = agent.agent_id in ["ceo", "cto", "legal-officer", "marketer-research"]
+            gemini_candidates = [PRO_GEMINI_MODEL, DEFAULT_GEMINI_MODEL] if is_advanced_role else [DEFAULT_GEMINI_MODEL, PRO_GEMINI_MODEL]
 
-            for model_candidate in [primary_model, "gemini-3.5-flash", "gemini-3.7-flash"]:
+            for model_candidate in gemini_candidates:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_candidate}:generateContent?key={GOOGLE_API_KEY}"
                     payload = {
@@ -160,35 +169,40 @@ class SwarmOrchestrator:
                             text = res_json["candidates"][0]["content"]["parts"][0]["text"]
                             return text
                         else:
-                            logger.warning(f"Gemini model {model_candidate} returned status {resp.status_code}: {resp.text[:100]}")
+                            logger.warning(f"Google Gemini ({model_candidate}) returned status {resp.status_code}: {resp.text[:100]}")
                 except Exception as e:
-                    logger.warning(f"Gemini invocation with {model_candidate} failed ({e}), trying fallback...")
+                    logger.warning(f"Google Gemini ({model_candidate}) failed: {e}")
 
-        # 2. Try OpenRouter (Multi-model gateway)
-        if OPENROUTER_API_KEY:
+        # 2. Fallback: Anthropic Claude Direct (Claude 3.7 / 3.5 Sonnet)
+        if ANTHROPIC_API_KEY:
             try:
-                async with httpx.AsyncClient(timeout=45.0) as client:
+                async with httpx.AsyncClient(timeout=60.0) as client:
                     resp = await client.post(
-                        "https://openrouter.ai/api/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+                        "https://api.anthropic.com/v1/messages",
+                        headers={
+                            "x-api-key": ANTHROPIC_API_KEY,
+                            "anthropic-version": "2023-06-01",
+                            "content-type": "application/json",
+                        },
                         json={
-                            "model": "anthropic/claude-3.5-sonnet" if "claude" in DEFAULT_MODEL else "google/gemini-3.7-flash",
-                            "messages": [
-                                {"role": "system", "content": full_system},
-                                {"role": "user", "content": prompt},
-                            ],
+                            "model": "claude-3-7-sonnet-20250219",
+                            "max_tokens": 4096,
+                            "system": full_system,
+                            "messages": [{"role": "user", "content": prompt}],
                         },
                     )
                     if resp.status_code == 200:
                         res_json = resp.json()
-                        return res_json["choices"][0]["message"]["content"]
+                        return res_json["content"][0]["text"]
+                    else:
+                        logger.warning(f"Anthropic Claude API status {resp.status_code}: {resp.text[:100]}")
             except Exception as e:
-                logger.error(f"OpenRouter invocation failed: {e}")
+                logger.warning(f"Anthropic Claude invocation failed: {e}")
 
-        # 3. Try OpenAI
+        # 3. Fallback: OpenAI Direct (GPT-4o / GPT-4o-mini)
         if OPENAI_API_KEY:
             try:
-                async with httpx.AsyncClient(timeout=45.0) as client:
+                async with httpx.AsyncClient(timeout=60.0) as client:
                     resp = await client.post(
                         "https://api.openai.com/v1/chat/completions",
                         headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
@@ -203,11 +217,128 @@ class SwarmOrchestrator:
                     if resp.status_code == 200:
                         res_json = resp.json()
                         return res_json["choices"][0]["message"]["content"]
+                    else:
+                        logger.warning(f"OpenAI API status {resp.status_code}: {resp.text[:100]}")
             except Exception as e:
-                logger.error(f"OpenAI invocation failed: {e}")
+                logger.warning(f"OpenAI invocation failed: {e}")
+
+        # 4. Fallback: xAI Grok Direct (Grok-2)
+        if XAI_API_KEY:
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post(
+                        "https://api.x.ai/v1/chat/completions",
+                        headers={"Authorization": f"Bearer {XAI_API_KEY}"},
+                        json={
+                            "model": "grok-2-latest",
+                            "messages": [
+                                {"role": "system", "content": full_system},
+                                {"role": "user", "content": prompt},
+                            ],
+                        },
+                    )
+                    if resp.status_code == 200:
+                        res_json = resp.json()
+                        return res_json["choices"][0]["message"]["content"]
+            except Exception as e:
+                logger.warning(f"xAI Grok invocation failed: {e}")
+
+        # 5. Fallback: DeepSeek Direct (DeepSeek-V3 / R1)
+        if DEEPSEEK_API_KEY:
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post(
+                        "https://api.deepseek.com/chat/completions",
+                        headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
+                        json={
+                            "model": "deepseek-chat",
+                            "messages": [
+                                {"role": "system", "content": full_system},
+                                {"role": "user", "content": prompt},
+                            ],
+                        },
+                    )
+                    if resp.status_code == 200:
+                        res_json = resp.json()
+                        return res_json["choices"][0]["message"]["content"]
+            except Exception as e:
+                logger.warning(f"DeepSeek invocation failed: {e}")
+
+        # 6. Fallback: GLM / Zhipu Direct (GLM-4)
+        if GLM_API_KEY:
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post(
+                        "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+                        headers={"Authorization": f"Bearer {GLM_API_KEY}"},
+                        json={
+                            "model": "glm-4-plus",
+                            "messages": [
+                                {"role": "system", "content": full_system},
+                                {"role": "user", "content": prompt},
+                            ],
+                        },
+                    )
+                    if resp.status_code == 200:
+                        res_json = resp.json()
+                        return res_json["choices"][0]["message"]["content"]
+            except Exception as e:
+                logger.warning(f"GLM invocation failed: {e}")
+
+        # 7. Fallback: MiniMax Direct (MiniMax-Text-01)
+        if MINIMAX_API_KEY:
+            try:
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post(
+                        "https://api.minimax.chat/v1/text/chatcompletion_v2",
+                        headers={"Authorization": f"Bearer {MINIMAX_API_KEY}"},
+                        json={
+                            "model": "MiniMax-Text-01",
+                            "messages": [
+                                {"role": "system", "content": full_system},
+                                {"role": "user", "content": prompt},
+                            ],
+                        },
+                    )
+                    if resp.status_code == 200:
+                        res_json = resp.json()
+                        return res_json["choices"][0]["message"]["content"]
+            except Exception as e:
+                logger.warning(f"MiniMax invocation failed: {e}")
+
+        # 8. Fallback: OpenRouter Universal Gateway (Access to Claude, Grok, MiniMax, GLM, DeepSeek, GPT)
+        if OPENROUTER_API_KEY:
+            openrouter_models = [
+                "google/gemini-3.7-flash",
+                "anthropic/claude-3.7-sonnet",
+                "x-ai/grok-2",
+                "deepseek/deepseek-chat",
+                "minimax/minimax-01",
+                "zhipu/glm-4",
+                "openai/gpt-4o",
+            ]
+            for or_model in openrouter_models:
+                try:
+                    async with httpx.AsyncClient(timeout=45.0) as client:
+                        resp = await client.post(
+                            "https://openrouter.ai/api/v1/chat/completions",
+                            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+                            json={
+                                "model": or_model,
+                                "messages": [
+                                    {"role": "system", "content": full_system},
+                                    {"role": "user", "content": prompt},
+                                ],
+                            },
+                        )
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            return res_json["choices"][0]["message"]["content"]
+                except Exception:
+                    continue
 
         # Fallback offline simulation response
-        return f"[{agent.name} - {agent.role}]\nReceived: {prompt}\n\n(AI API keys not configured or currently unreachable. Set GOOGLE_API_KEY or OPENROUTER_API_KEY in .env to activate live neural reasoning.)"
+        return f"[{agent.name} - {agent.role}]\nReceived: {prompt}\n\n(AI providers currently unreachable. Set valid API keys in .env.)"
 
     async def handle_event(self, event: Dict[str, Any]):
         """Processes incoming events from Buzz Relay."""
