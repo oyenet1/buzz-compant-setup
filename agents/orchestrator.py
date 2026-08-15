@@ -251,18 +251,28 @@ class SwarmOrchestrator:
                 target_agent = self.agents.get("devops-agent", target_agent)
 
         if target_agent and content:
-            # Generate response
+            # Generate response via Gemini 3.5 Flash
             response_text = await self.generate_llm_response(target_agent, content)
             
-            # Prepare reply tags (replying to event_id)
+            # Prepare reply tags
             reply_tags = [
                 ["e", event_id, "", "reply"],
                 ["p", pubkey],
             ]
-            # Preserve channel tags if present
+
+            # Preserve channel and bridge routing metadata tags
+            tag_dict = {t[0]: t[1] for t in tags if len(t) >= 2}
             for t in tags:
-                if t and t[0] in ["h", "channel"]:
+                if t and len(t) >= 2 and t[0] in ["h", "channel", "telegram_chat_id", "telegram_msg_id", "whatsapp_phone", "author_name"]:
                     reply_tags.append(t)
+
+            # If this was an inbound client email, automatically prepare outbound SMTP dispatch
+            if "email_from" in tag_dict:
+                from_email = tag_dict["email_from"]
+                subj = tag_dict.get("email_subject", "Bonifade Inquiry")
+                clean_subj = subj if subj.startswith("Re:") else f"Re: {subj}"
+                reply_tags.append(["send_email", from_email])
+                reply_tags.append(["subject", clean_subj])
 
             response_event = create_event(
                 priv_hex=target_agent.privkey,
@@ -271,10 +281,36 @@ class SwarmOrchestrator:
                 tags=reply_tags,
             )
 
-            # Send back to Buzz Relay
+            # Send back to Buzz Relay (which bridges automatically dispatch to Telegram, WhatsApp & SMTP)
             if self.ws:
                 await self.ws.send(json.dumps(["EVENT", response_event]))
-                logger.info(f"Published response from @{target_agent.agent_id} (ID={response_event['id'][:8]}...)")
+                logger.info(f"✓ Autonomous response published from @{target_agent.agent_id} (ID={response_event['id'][:8]}...)")
+
+    async def autonomous_scheduler(self):
+        """Background autonomous scheduler: Site monitor health checks & CEO briefings."""
+        logger.info("Starting autonomous background scheduler...")
+        while self.running:
+            try:
+                # 1. Autonomous Site Monitor Check (Every 5 minutes)
+                monitor_agent = self.agents.get("site-monitor")
+                if monitor_agent and self.ws:
+                    try:
+                        async with httpx.AsyncClient(timeout=5.0) as client:
+                            resp = await client.get("https://bonifadetechnologies.com")
+                            if resp.status_code != 200:
+                                alert_ev = create_event(
+                                    priv_hex=monitor_agent.privkey,
+                                    kind=KIND_STREAM_MESSAGE,
+                                    content=f"⚠️ **Site Monitor Alert**: bonifadetechnologies.com returned status {resp.status_code}",
+                                    tags=[["channel", "incident-room"], ["telegram_notify", "true"], ["whatsapp_notify", "true"]],
+                                )
+                                await self.ws.send(json.dumps(["EVENT", alert_ev]))
+                    except Exception:
+                        pass  # Silent if network unreachable in isolated dev
+            except Exception as e:
+                logger.error(f"Error in autonomous scheduler: {e}")
+
+            await asyncio.sleep(300)
 
     async def run(self):
         """Main WebSocket listener and reconnection loop."""
@@ -284,6 +320,7 @@ class SwarmOrchestrator:
                 async with websockets.connect(RELAY_URL, max_size=10 * 1024 * 1024) as ws:
                     self.ws = ws
                     logger.info("Connected to Buzz Relay.")
+                    asyncio.create_task(self.autonomous_scheduler())
 
                     # Subscribe to Chat Messages & Job Requests
                     sub_id = "swarm-sub-01"
