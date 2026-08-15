@@ -46,7 +46,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 DEFAULT_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "gemini")
-DEFAULT_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-3.7-flash")
+DEFAULT_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-3.5-flash")
 COMPANY_NAME = os.getenv("COMPANY_NAME", "Bonifade Technologies")
 DEPARTMENTS_DIR = os.getenv("DEPARTMENTS_DIR", "/app/departments")
 MARKETING_DIR = os.getenv("MARKETING_DIR", "/app/marketing")
@@ -142,11 +142,11 @@ class SwarmOrchestrator:
         if context:
             full_system += f"\nConversation Context:\n{context}\n"
 
-        # 1. Try Google Gemini (Gemini 3.7 Flash Reasoning Engine)
+        # 1. Try Google Gemini (Gemini 3.5 Flash Engine)
         if GOOGLE_API_KEY and DEFAULT_PROVIDER in ["gemini", "auto"]:
-            primary_model = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.7-flash")
+            primary_model = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-3.5-flash")
 
-            for model_candidate in [primary_model, "gemini-3.7-flash"]:
+            for model_candidate in [primary_model, "gemini-3.5-flash", "gemini-3.7-flash"]:
                 try:
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_candidate}:generateContent?key={GOOGLE_API_KEY}"
                     payload = {
