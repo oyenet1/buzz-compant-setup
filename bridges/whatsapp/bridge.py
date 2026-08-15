@@ -97,6 +97,48 @@ class WhatsAppClient:
             logger.error(f"Error calling WhatsApp API: {e}")
             return False
 
+    async def send_whatsapp_template(
+        self,
+        to_phone: str,
+        template_name: str = "hello_world",
+        language_code: str = "en_US",
+        components: Optional[list] = None,
+    ):
+        """Sends an approved Meta WhatsApp template message for initiating conversations."""
+        if not WHATSAPP_ACCESS_TOKEN or not WHATSAPP_PHONE_NUMBER_ID:
+            logger.warning("WhatsApp API credentials missing.")
+            return False
+
+        clean_phone = "".join(filter(str.isdigit, to_phone))
+        url = f"https://graph.facebook.com/v21.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+        headers = {
+            "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
+            "Content-Type": "application/json",
+        }
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": clean_phone,
+            "type": "template",
+            "template": {
+                "name": template_name,
+                "language": {"code": language_code},
+                "components": components or [],
+            },
+        }
+
+        try:
+            resp = await self.http_client.post(url, headers=headers, json=payload)
+            if resp.status_code in [200, 201]:
+                logger.info(f"WhatsApp template '{template_name}' sent to {clean_phone}")
+                return True
+            else:
+                logger.error(f"WhatsApp template send failure ({resp.status_code}): {resp.text}")
+                return False
+        except Exception as e:
+            logger.error(f"Error calling WhatsApp template API: {e}")
+            return False
+
 
 wa_client = WhatsAppClient()
 
