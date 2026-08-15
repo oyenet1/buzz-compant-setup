@@ -52,6 +52,9 @@ show_help() {
     echo -e "    ${GREEN}update${NC}                 Pull latest images, rebuild bridges & restart seamlessly"
     echo -e "    ${GREEN}backup${NC}                 Create a complete compressed backup of DB, Redis & config"
     echo -e "    ${GREEN}restore${NC} <file.tar.gz>  Restore database and state from a backup archive"
+    echo -e "    ${GREEN}r2-status${NC}              Check Cloudflare R2 bucket connection, files & size"
+    echo -e "    ${GREEN}r2-backup${NC}              Create a snapshot and upload immediately to Cloudflare R2"
+    echo -e "    ${GREEN}r2-sync-marketing${NC}      Sync all marketing books and playbooks to Cloudflare R2"
     echo -e "    ${GREEN}seed${NC}                   Re-seed company channels, baseline goals & department agents"
     echo -e "    ${GREEN}chat${NC}                   Open interactive terminal chat with the CEO / Swarm"
     echo -e "    ${GREEN}test-all${NC}               Run diagnostic connectivity tests on all AI & messaging APIs"
@@ -134,6 +137,18 @@ case "$1" in
     restore)
         shift
         bash scripts/restore.sh "$@"
+        ;;
+
+    r2-status)
+        python3 scripts/r2_storage.py status
+        ;;
+
+    r2-backup)
+        bash scripts/backup.sh
+        ;;
+
+    r2-sync-marketing)
+        python3 scripts/r2_storage.py sync-marketing
         ;;
 
     seed)

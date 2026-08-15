@@ -46,15 +46,9 @@ tar -czf "$TAR_FILE" -C "$BACKUP_DIR" "snapshot_${TIMESTAMP}"
 rm -rf "$SNAPSHOT_DIR"
 
 # 5. Optional Upload to Cloudflare R2 / S3
-if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ] && [ -n "$R2_BUCKET_NAME" ]; then
-    echo "[Backup] Uploading to Cloudflare R2 bucket '${R2_BUCKET_NAME}'..."
-    if command -v aws >/dev/null 2>&1; then
-        AWS_ACCESS_KEY_ID="$R2_ACCESS_KEY_ID" \
-        AWS_SECRET_ACCESS_KEY="$R2_SECRET_ACCESS_KEY" \
-        aws s3 cp "$TAR_FILE" "s3://${R2_BUCKET_NAME}/backups/buzz_backup_${TIMESTAMP}.tar.gz" \
-            --endpoint-url "${R2_ENDPOINT:-https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com}"
-        echo "[Backup] ✓ Uploaded to Cloudflare R2 successfully."
-    fi
+if [ -n "$R2_ACCESS_KEY_ID" ] && [ -n "$R2_SECRET_ACCESS_KEY" ]; then
+    echo "[Backup] Uploading to Cloudflare R2 bucket '${R2_BUCKET_NAME:-bonifade-buzz-storage}'..."
+    python3 "${SCRIPT_DIR}/scripts/r2_storage.py" upload "$TAR_FILE" "backups/buzz_backup_${TIMESTAMP}.tar.gz" || echo "[Backup] ! R2 upload warning: check R2 credentials"
 fi
 
 # 6. Retention policy: Keep last 14 days of local backups
