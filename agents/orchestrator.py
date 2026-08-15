@@ -52,6 +52,7 @@ XAI_API_KEY = (os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY") or "").stri
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY", "").strip()
 GLM_API_KEY = (os.getenv("GLM_API_KEY") or os.getenv("ZHIPU_API_KEY") or "").strip()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
+META_AI_API_KEY = (os.getenv("META_AI_API_KEY") or os.getenv("LLAMA_API_KEY") or os.getenv("GROQ_API_KEY") or "").strip()
 
 DEFAULT_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "gemini")
 DEFAULT_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-3.5-flash")
@@ -306,15 +307,40 @@ class SwarmOrchestrator:
             except Exception as e:
                 logger.warning(f"MiniMax invocation failed: {e}")
 
-        # 8. Fallback: OpenRouter Universal Gateway (Access to Claude, Grok, MiniMax, GLM, DeepSeek, GPT)
+        # 8. Fallback: Meta AI / Llama / Muse Direct (Llama 3.3 70B / Meta Muse)
+        if META_AI_API_KEY:
+            try:
+                endpoint = os.getenv("META_AI_ENDPOINT", "https://api.groq.com/openai/v1/chat/completions")
+                model_name = os.getenv("META_AI_MODEL", "llama-3.3-70b-versatile")
+                async with httpx.AsyncClient(timeout=60.0) as client:
+                    resp = await client.post(
+                        endpoint,
+                        headers={"Authorization": f"Bearer {META_AI_API_KEY}"},
+                        json={
+                            "model": model_name,
+                            "messages": [
+                                {"role": "system", "content": full_system},
+                                {"role": "user", "content": prompt},
+                            ],
+                        },
+                    )
+                    if resp.status_code == 200:
+                        res_json = resp.json()
+                        return res_json["choices"][0]["message"]["content"]
+            except Exception as e:
+                logger.warning(f"Meta AI / Llama invocation failed: {e}")
+
+        # 9. Fallback: OpenRouter Universal Gateway (Access to Claude, Grok, MiniMax, GLM, DeepSeek, Llama, Muse, GPT)
         if OPENROUTER_API_KEY:
             openrouter_models = [
                 "google/gemini-3.7-flash",
                 "anthropic/claude-3.7-sonnet",
+                "meta-llama/llama-3.3-70b-instruct",
                 "x-ai/grok-2",
                 "deepseek/deepseek-chat",
                 "minimax/minimax-01",
                 "zhipu/glm-4",
+                "meta-llama/llama-3.1-405b-instruct",
                 "openai/gpt-4o",
             ]
             for or_model in openrouter_models:

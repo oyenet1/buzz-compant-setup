@@ -100,6 +100,27 @@ async def test_xai(api_key: str):
         report("xAI Grok API", False, str(e))
 
 
+async def test_meta_ai(api_key: str):
+    if not api_key:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Meta AI / Llama / Muse':<25}{NC} (No key set in .env)")
+        return
+    try:
+        endpoint = os.getenv("META_AI_ENDPOINT", "https://api.groq.com/openai/v1/models")
+        if "chat/completions" in endpoint:
+            endpoint = endpoint.replace("chat/completions", "models")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            r = await client.get(
+                endpoint,
+                headers={"Authorization": f"Bearer {api_key}"},
+            )
+            if r.status_code in [200, 400]:
+                report("Meta AI / Llama / Muse", True, f"{GREEN}200 OK — Token verified{NC}")
+            else:
+                report("Meta AI / Llama / Muse", False, f"Status {r.status_code}: {r.text[:80]}")
+    except Exception as e:
+        report("Meta AI / Llama / Muse", False, str(e))
+
+
 async def test_openrouter(api_key: str):
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'OpenRouter API':<25}{NC} (No key set in .env)")
@@ -227,6 +248,7 @@ async def main():
     await test_anthropic(os.getenv("ANTHROPIC_API_KEY", ""))
     await test_openai(os.getenv("OPENAI_API_KEY", ""))
     await test_xai(os.getenv("XAI_API_KEY", "") or os.getenv("GROK_API_KEY", ""))
+    await test_meta_ai(os.getenv("META_AI_API_KEY", ""))
     await test_openrouter(os.getenv("OPENROUTER_API_KEY", ""))
     await test_firecrawl(os.getenv("FIRECRAWL_API_KEY", ""))
 
