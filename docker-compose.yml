@@ -140,8 +140,10 @@ services:
         condition: service_started
       postgres:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
+        required: false
     env_file:
       - .env
     volumes:

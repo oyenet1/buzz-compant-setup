@@ -162,8 +162,28 @@ async def main():
     print(f"{CYAN}{BOLD}═══════════════════════════════════════════════════════════════════════{NC}\n")
 
     print(f"{BOLD}1. Database & Infrastructure Services:{NC}")
-    test_port("PostgreSQL Database", os.getenv("POSTGRES_HOST", "127.0.0.1"), int(os.getenv("POSTGRES_PORT", "5432")))
-    test_port("Redis Pub/Sub", os.getenv("REDIS_HOST", "127.0.0.1"), int(os.getenv("REDIS_PORT", "6379")))
+    db_url = os.getenv("DATABASE_URL", "")
+    if db_url:
+        import urllib.parse
+        p = urllib.parse.urlparse(db_url)
+        db_host = p.hostname or "127.0.0.1"
+        db_port = p.port or 5432
+        db_label = f"PostgreSQL ({'External: ' + db_host if db_host not in ['127.0.0.1', 'localhost', 'postgres'] else 'Local Docker'})"
+        test_port(db_label, db_host, db_port)
+    else:
+        test_port("PostgreSQL Database", os.getenv("POSTGRES_HOST", "127.0.0.1"), int(os.getenv("POSTGRES_PORT", "5432")))
+
+    redis_url = os.getenv("REDIS_URL", "")
+    if redis_url:
+        import urllib.parse
+        p = urllib.parse.urlparse(redis_url)
+        r_host = p.hostname or "127.0.0.1"
+        r_port = p.port or 6379
+        r_label = f"Redis Pub/Sub ({'External: ' + r_host if r_host not in ['127.0.0.1', 'localhost', 'redis'] else 'Local Docker'})"
+        test_port(r_label, r_host, r_port)
+    else:
+        test_port("Redis Pub/Sub", os.getenv("REDIS_HOST", "127.0.0.1"), int(os.getenv("REDIS_PORT", "6379")))
+
     await test_relay(os.getenv("BUZZ_RELAY_URL", "ws://127.0.0.1:8080"))
 
     print(f"\n{BOLD}2. AI Neural Providers (Swarm Brain):{NC}")

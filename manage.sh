@@ -65,11 +65,35 @@ show_help() {
     echo -e "    ${GREEN}help${NC}                   Show this help message\n"
 }
 
+get_active_services() {
+    local services="relay agent-orchestrator bridge-telegram bridge-whatsapp bridge-smtp"
+
+    # Dynamic PostgreSQL detection
+    if [ -z "$DATABASE_URL" ] || [[ "$DATABASE_URL" == *"@postgres:"* ]] || [[ "$DATABASE_URL" == *"@127.0.0.1:"* ]] || [[ "$DATABASE_URL" == *"@localhost:"* ]] || [ "${USE_EXTERNAL_POSTGRES}" = "false" ]; then
+        services="postgres $services"
+    else
+        local db_host=$(echo "$DATABASE_URL" | sed -E 's/.*@([^:\/]+).*/\1/')
+        echo -e "  ${CYAN}ℹ External PostgreSQL detected (${db_host}) — skipping local postgres container.${NC}"
+    fi
+
+    # Dynamic Redis detection
+    if [ -z "$REDIS_URL" ] || [[ "$REDIS_URL" == *"@redis:"* ]] || [[ "$REDIS_URL" == *"@127.0.0.1:"* ]] || [[ "$REDIS_URL" == *"@localhost:"* ]]; then
+        services="redis $services"
+    else
+        local redis_host=$(echo "$REDIS_URL" | sed -E 's/.*@([^:\/]+).*/\1/')
+        echo -e "  ${CYAN}ℹ External Redis detected (${redis_host}) — skipping local redis container.${NC}"
+    fi
+
+    echo "$services"
+}
+
 case "$1" in
     start)
-        echo -e "${GREEN}Starting Buzz Company Swarm...${NC}"
-        $DOCKER_COMPOSE up -d
-        echo -e "${GREEN}✓ All services started.${NC}"
+        echo -e "${GREEN}Starting Buzz Company Swarm (Dynamic Discovery)...${NC}"
+        TARGET_SERVICES=$(get_active_services)
+        # shellcheck disable=SC2086
+        $DOCKER_COMPOSE up -d $TARGET_SERVICES
+        echo -e "${GREEN}✓ All active swarm services started successfully.${NC}"
         ;;
 
     stop)
@@ -85,8 +109,10 @@ case "$1" in
             echo -e "${YELLOW}Restarting service: $SERVICE...${NC}"
             $DOCKER_COMPOSE restart "$SERVICE"
         else
-            echo -e "${YELLOW}Restarting all services...${NC}"
-            $DOCKER_COMPOSE restart
+            echo -e "${YELLOW}Restarting all active swarm services...${NC}"
+            TARGET_SERVICES=$(get_active_services)
+            # shellcheck disable=SC2086
+            $DOCKER_COMPOSE restart $TARGET_SERVICES
         fi
         echo -e "${GREEN}✓ Restart complete.${NC}"
         ;;
