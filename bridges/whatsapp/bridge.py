@@ -70,8 +70,8 @@ class WhatsAppClient:
             logger.warning("WhatsApp API credentials missing. Cannot send outbound message.")
             return False
 
-        # Normalize phone number (strip + and spaces)
-        clean_phone = "".join(filter(str.isdigit, to_phone))
+        is_group = "@g.us" in to_phone
+        clean_target = to_phone if is_group else "".join(filter(str.isdigit, to_phone))
         url = f"https://graph.facebook.com/v21.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
         headers = {
             "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",
@@ -79,8 +79,8 @@ class WhatsAppClient:
         }
         payload = {
             "messaging_product": "whatsapp",
-            "recipient_type": "individual",
-            "to": clean_phone,
+            "recipient_type": "group" if is_group else "individual",
+            "to": clean_target,
             "type": "text",
             "text": {"preview_url": False, "body": message_text},
         }
