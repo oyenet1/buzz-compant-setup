@@ -142,24 +142,31 @@ class SwarmOrchestrator:
         if context:
             full_system += f"\nConversation Context:\n{context}\n"
 
-        # 1. Try Google Gemini if API key present
+        # 1. Try Google Gemini with optimal model per department
         if GOOGLE_API_KEY and DEFAULT_PROVIDER in ["gemini", "auto"]:
-            try:
-                url = f"https://generativelanguage.googleapis.com/v1beta/models/{DEFAULT_MODEL}:generateContent?key={GOOGLE_API_KEY}"
-                payload = {
-                    "contents": [{"parts": [{"text": f"System Context: {full_system}\n\nUser Request: {prompt}"}]}],
-                    "generationConfig": {"temperature": 0.7, "maxOutputTokens": 2048},
-                }
-                async with httpx.AsyncClient(timeout=45.0) as client:
-                    resp = await client.post(url, json=payload)
-                    if resp.status_code == 200:
-                        res_json = resp.json()
-                        text = res_json["candidates"][0]["content"]["parts"][0]["text"]
-                        return text
-                    else:
-                        logger.error(f"Gemini API error ({resp.status_code}): {resp.text}")
-            except Exception as e:
-                logger.error(f"Gemini invocation failed: {e}")
+            # Route strategic, architectural and deep research tasks to Gemini 2.5 Pro, and operational tasks to Gemini 2.5 Flash
+            if agent.agent_id in ["ceo", "cto", "legal-officer", "marketer-research"]:
+                primary_model = os.getenv("PRO_GEMINI_MODEL", "gemini-2.5-pro")
+            else:
+                primary_model = os.getenv("DEFAULT_GEMINI_MODEL", "gemini-2.5-flash")
+
+            for model_candidate in [primary_model, "gemini-2.5-flash", "gemini-1.5-pro"]:
+                try:
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_candidate}:generateContent?key={GOOGLE_API_KEY}"
+                    payload = {
+                        "contents": [{"parts": [{"text": f"System Context: {full_system}\n\nUser Request: {prompt}"}]}],
+                        "generationConfig": {"temperature": 0.7, "maxOutputTokens": 4096},
+                    }
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            text = res_json["candidates"][0]["content"]["parts"][0]["text"]
+                            return text
+                        else:
+                            logger.warning(f"Gemini model {model_candidate} returned status {resp.status_code}: {resp.text[:100]}")
+                except Exception as e:
+                    logger.warning(f"Gemini invocation with {model_candidate} failed ({e}), trying fallback...")
 
         # 2. Try OpenRouter (Multi-model gateway)
         if OPENROUTER_API_KEY:
