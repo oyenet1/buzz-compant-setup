@@ -188,8 +188,8 @@ DETECTED_IP=$(curl -s -m 3 https://api.ipify.org || curl -s -m 3 https://ifconfi
 prompt_var "Company Name" "${COMPANY_NAME:-Bonifade Technologies}" CFG_COMPANY_NAME
 prompt_var "Domain Name or VPS Host (e.g. buzz.yourdomain.com or IP)" "${DOMAIN_NAME:-$DETECTED_IP}" CFG_DOMAIN_NAME
 prompt_var "HTTP Scheme (http or https)" "${HTTP_SCHEME:-http}" CFG_HTTP_SCHEME
-prompt_var "Public Web Port" "${APP_PORT:-3000}" CFG_APP_PORT
-prompt_var "Buzz Relay WebSocket Port" "${RELAY_PORT:-8080}" CFG_RELAY_PORT
+prompt_var "Public Web Port" "${APP_PORT:-4005}" CFG_APP_PORT
+prompt_var "Buzz Relay WebSocket Port" "${RELAY_PORT:-4005}" CFG_RELAY_PORT
 
 # Executive Contacts
 prompt_var "CEO / Executive Name" "${CEO_NAME:-Hermes CEO}" CFG_CEO_NAME

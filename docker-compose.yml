@@ -113,7 +113,7 @@ services:
       - buzz-media-data:/var/lib/buzz/media
       - buzz-git-data:/var/lib/buzz/git
     ports:
-      - "${RELAY_PORT:-8080}:8080"
+      - "${APP_PORT:-4005}:8080"
     networks:
       - buzz-network
     healthcheck:
@@ -144,6 +144,7 @@ services:
       - .env
     volumes:
       - ./departments:/app/departments:ro
+      - ./marketing:/app/marketing:ro
       - ./workflows:/app/workflows:ro
       - ./data:/app/data
     networks:

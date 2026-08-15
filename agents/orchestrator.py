@@ -49,11 +49,14 @@ DEFAULT_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "gemini")
 DEFAULT_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-2.5-flash")
 COMPANY_NAME = os.getenv("COMPANY_NAME", "Bonifade Technologies")
 DEPARTMENTS_DIR = os.getenv("DEPARTMENTS_DIR", "/app/departments")
+MARKETING_DIR = os.getenv("MARKETING_DIR", "/app/marketing")
 DATA_DIR = os.getenv("DATA_DIR", "/app/data")
 
 # Fallback local paths
 if not os.path.exists(DEPARTMENTS_DIR) and os.path.exists("departments"):
     DEPARTMENTS_DIR = "departments"
+if not os.path.exists(MARKETING_DIR) and os.path.exists("marketing"):
+    MARKETING_DIR = "marketing"
 if not os.path.exists(DATA_DIR) and os.path.exists("data"):
     DATA_DIR = "data"
 

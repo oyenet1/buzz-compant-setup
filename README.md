@@ -140,6 +140,21 @@ chmod +x install.sh
 
 ---
 
+## 📚 Marketing Swarm Knowledge Engine
+
+All marketing agents are grounded in the full-text marketing and direct-response library located in [`marketing/knowledge/`](marketing/knowledge/):
+
+* **Alex Hormozi** — *$100M Offers: Grand Slam Offers & Value Equation*
+* **Akin Alabi** — *How to Sell to Nigerians & Small Business Big Money*
+* **Sabri Suby** — *Sell Like Crazy: The Godfather Offer & 8-Phase Selling System*
+* **Brian Tracy** — *The Psychology of Selling & Negotiation Strategies*
+* **Dan Lok** — *Influence: 47 Forbidden Psychological Tactics & F.U. Money*
+* **Paul Smith** — *Sell with a Story: Business Storytelling Frameworks*
+* **John C. Maxwell** — *The 21 Irrefutable Laws of Leadership*
+* **WhatsApp Selling Guide** — *Direct Status & Broadcast Conversion Playbooks*
+
+---
+
 ## 🛠 Management & CLI Operations
 
 The `./manage.sh` controller script provides commands to run and inspect your swarm:
