@@ -151,10 +151,21 @@ class SwarmOrchestrator:
         if context:
             full_system += f"\nConversation Context:\n{context}\n"
 
-        # 1. Primary: Google Gemini (3.7 Flash for Advanced Roles, 3.5 Flash for Operational Roles)
+        # 1. Primary: Google Gemini (3.7 Flash for Advanced Roles, 3.6/3.5 Flash for Operational Roles)
         if GOOGLE_API_KEY:
             is_advanced_role = agent.agent_id in ["ceo", "cto", "legal-officer", "marketer-research"]
-            gemini_candidates = [PRO_GEMINI_MODEL, DEFAULT_GEMINI_MODEL] if is_advanced_role else [DEFAULT_GEMINI_MODEL, PRO_GEMINI_MODEL]
+            gemini_candidates = [
+                PRO_GEMINI_MODEL,
+                "gemini-3.7-flash",
+                "gemini-3.6-flash",
+                "gemini-3.5-flash",
+                "gemini-3.1-pro-preview",
+            ] if is_advanced_role else [
+                DEFAULT_GEMINI_MODEL,
+                "gemini-3.6-flash",
+                "gemini-3.5-flash",
+                "gemini-3.7-flash",
+            ]
 
             for model_candidate in gemini_candidates:
                 try:
@@ -174,117 +185,122 @@ class SwarmOrchestrator:
                 except Exception as e:
                     logger.warning(f"Google Gemini ({model_candidate}) failed: {e}")
 
-        # 2. Fallback: Anthropic Claude Direct (Claude 3.7 / 3.5 Sonnet)
+        # 2. Fallback: Anthropic Claude Direct (Claude 3.7 Sonnet Hybrid Thinking / Claude 3.5 Sonnet)
         if ANTHROPIC_API_KEY:
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
-                        "https://api.anthropic.com/v1/messages",
-                        headers={
-                            "x-api-key": ANTHROPIC_API_KEY,
-                            "anthropic-version": "2023-06-01",
-                            "content-type": "application/json",
-                        },
-                        json={
-                            "model": "claude-3-7-sonnet-20250219",
-                            "max_tokens": 4096,
-                            "system": full_system,
-                            "messages": [{"role": "user", "content": prompt}],
-                        },
-                    )
-                    if resp.status_code == 200:
-                        res_json = resp.json()
-                        return res_json["content"][0]["text"]
-                    else:
-                        logger.warning(f"Anthropic Claude API status {resp.status_code}: {resp.text[:100]}")
-            except Exception as e:
-                logger.warning(f"Anthropic Claude invocation failed: {e}")
+            for claude_model in ["claude-3-7-sonnet-20250219", "claude-3-5-sonnet-20241022"]:
+                try:
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(
+                            "https://api.anthropic.com/v1/messages",
+                            headers={
+                                "x-api-key": ANTHROPIC_API_KEY,
+                                "anthropic-version": "2023-06-01",
+                                "content-type": "application/json",
+                            },
+                            json={
+                                "model": claude_model,
+                                "max_tokens": 4096,
+                                "system": full_system,
+                                "messages": [{"role": "user", "content": prompt}],
+                            },
+                        )
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            return res_json["content"][0]["text"]
+                except Exception as e:
+                    logger.warning(f"Anthropic Claude ({claude_model}) failed: {e}")
 
-        # 3. Fallback: OpenAI Direct (GPT-4o / GPT-4o-mini)
+        # 3. Fallback: OpenAI Direct (o3-mini Reasoning / GPT-4.5 / GPT-4o)
         if OPENAI_API_KEY:
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
-                        "https://api.openai.com/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
-                        json={
-                            "model": "gpt-4o",
+            for openai_model in ["o3-mini", "gpt-4.5-preview", "gpt-4o", "gpt-4o-mini"]:
+                try:
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        payload_oa = {
+                            "model": openai_model,
                             "messages": [
                                 {"role": "system", "content": full_system},
                                 {"role": "user", "content": prompt},
                             ],
-                        },
-                    )
-                    if resp.status_code == 200:
-                        res_json = resp.json()
-                        return res_json["choices"][0]["message"]["content"]
-                    else:
-                        logger.warning(f"OpenAI API status {resp.status_code}: {resp.text[:100]}")
-            except Exception as e:
-                logger.warning(f"OpenAI invocation failed: {e}")
+                        }
+                        # o3-mini uses max_completion_tokens
+                        if openai_model.startswith("o"):
+                            payload_oa["max_completion_tokens"] = 4096
+                        resp = await client.post(
+                            "https://api.openai.com/v1/chat/completions",
+                            headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                            json=payload_oa,
+                        )
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            return res_json["choices"][0]["message"]["content"]
+                except Exception as e:
+                    logger.warning(f"OpenAI ({openai_model}) failed: {e}")
 
-        # 4. Fallback: xAI Grok Direct (Grok-2)
+        # 4. Fallback: xAI Grok Direct (Grok-3 / Grok-2)
         if XAI_API_KEY:
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
-                        "https://api.x.ai/v1/chat/completions",
-                        headers={"Authorization": f"Bearer {XAI_API_KEY}"},
-                        json={
-                            "model": "grok-2-latest",
-                            "messages": [
-                                {"role": "system", "content": full_system},
-                                {"role": "user", "content": prompt},
-                            ],
-                        },
-                    )
-                    if resp.status_code == 200:
-                        res_json = resp.json()
-                        return res_json["choices"][0]["message"]["content"]
-            except Exception as e:
-                logger.warning(f"xAI Grok invocation failed: {e}")
+            for grok_model in ["grok-3", "grok-3-beta", "grok-2-latest"]:
+                try:
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(
+                            "https://api.x.ai/v1/chat/completions",
+                            headers={"Authorization": f"Bearer {XAI_API_KEY}"},
+                            json={
+                                "model": grok_model,
+                                "messages": [
+                                    {"role": "system", "content": full_system},
+                                    {"role": "user", "content": prompt},
+                                ],
+                            },
+                        )
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            return res_json["choices"][0]["message"]["content"]
+                except Exception as e:
+                    logger.warning(f"xAI Grok ({grok_model}) failed: {e}")
 
-        # 5. Fallback: DeepSeek Direct (DeepSeek-V3 / R1)
+        # 5. Fallback: DeepSeek Direct (DeepSeek-R1 Reasoner / DeepSeek-V3)
         if DEEPSEEK_API_KEY:
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
-                        "https://api.deepseek.com/chat/completions",
-                        headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
-                        json={
-                            "model": "deepseek-chat",
-                            "messages": [
-                                {"role": "system", "content": full_system},
-                                {"role": "user", "content": prompt},
-                            ],
-                        },
-                    )
-                    if resp.status_code == 200:
-                        res_json = resp.json()
-                        return res_json["choices"][0]["message"]["content"]
-            except Exception as e:
-                logger.warning(f"DeepSeek invocation failed: {e}")
+            for ds_model in ["deepseek-reasoner", "deepseek-chat"]:
+                try:
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(
+                            "https://api.deepseek.com/chat/completions",
+                            headers={"Authorization": f"Bearer {DEEPSEEK_API_KEY}"},
+                            json={
+                                "model": ds_model,
+                                "messages": [
+                                    {"role": "system", "content": full_system},
+                                    {"role": "user", "content": prompt},
+                                ],
+                            },
+                        )
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            return res_json["choices"][0]["message"]["content"]
+                except Exception as e:
+                    logger.warning(f"DeepSeek ({ds_model}) failed: {e}")
 
-        # 6. Fallback: GLM / Zhipu Direct (GLM-4)
+        # 6. Fallback: GLM / Zhipu Direct (GLM-4-Plus)
         if GLM_API_KEY:
-            try:
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
-                        "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-                        headers={"Authorization": f"Bearer {GLM_API_KEY}"},
-                        json={
-                            "model": "glm-4-plus",
-                            "messages": [
-                                {"role": "system", "content": full_system},
-                                {"role": "user", "content": prompt},
-                            ],
-                        },
-                    )
-                    if resp.status_code == 200:
-                        res_json = resp.json()
-                        return res_json["choices"][0]["message"]["content"]
-            except Exception as e:
-                logger.warning(f"GLM invocation failed: {e}")
+            for glm_model in ["glm-4-plus", "glm-4-flash"]:
+                try:
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(
+                            "https://open.bigmodel.cn/api/paas/v4/chat/completions",
+                            headers={"Authorization": f"Bearer {GLM_API_KEY}"},
+                            json={
+                                "model": glm_model,
+                                "messages": [
+                                    {"role": "system", "content": full_system},
+                                    {"role": "user", "content": prompt},
+                                ],
+                            },
+                        )
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            return res_json["choices"][0]["message"]["content"]
+                except Exception as e:
+                    logger.warning(f"GLM ({glm_model}) failed: {e}")
 
         # 7. Fallback: MiniMax Direct (MiniMax-Text-01)
         if MINIMAX_API_KEY:
@@ -330,18 +346,21 @@ class SwarmOrchestrator:
             except Exception as e:
                 logger.warning(f"Meta AI / Llama invocation failed: {e}")
 
-        # 9. Fallback: OpenRouter Universal Gateway (Access to Claude, Grok, MiniMax, GLM, DeepSeek, Llama, Muse, GPT)
+        # 9. Fallback: OpenRouter Universal Gateway (Access to Claude 3.7, Grok 3, DeepSeek R1, Llama 3.3, MiniMax, GLM, GPT-4.5)
         if OPENROUTER_API_KEY:
             openrouter_models = [
                 "google/gemini-3.7-flash",
                 "anthropic/claude-3.7-sonnet",
+                "x-ai/grok-3",
+                "deepseek/deepseek-r1",
                 "meta-llama/llama-3.3-70b-instruct",
                 "x-ai/grok-2",
                 "deepseek/deepseek-chat",
                 "minimax/minimax-01",
-                "zhipu/glm-4",
+                "zhipu/glm-4-plus",
+                "openai/gpt-4.5-preview",
+                "openai/o3-mini",
                 "meta-llama/llama-3.1-405b-instruct",
-                "openai/gpt-4o",
             ]
             for or_model in openrouter_models:
                 try:
