@@ -192,7 +192,7 @@ prompt_var "Public Web Port" "${APP_PORT:-4005}" CFG_APP_PORT
 prompt_var "Buzz Relay WebSocket Port" "${RELAY_PORT:-4005}" CFG_RELAY_PORT
 
 # Executive Contacts
-prompt_var "CEO / Executive Name" "${CEO_NAME:-Hermes CEO}" CFG_CEO_NAME
+prompt_var "CEO / Executive Name" "${CEO_NAME:-Fade_networker}" CFG_CEO_NAME
 prompt_var "CEO Email (for executive reports)" "${CEO_EMAIL:-bowofadeoyerinde@gmail.com}" CFG_CEO_EMAIL
 prompt_var "CEO WhatsApp Number (e.g. +234...)" "${CEO_WHATSAPP_NUMBER:-+2347081353229}" CFG_CEO_WHATSAPP
 
@@ -507,7 +507,7 @@ fi
 
 echo ""
 echo -e "  ${BOLD}🤖 Active Department Agents in Swarm:${NC}"
-echo -e "    • @ceo                 (Hermes CEO — Strategy & Orchestration)"
+echo -e "    • @ceo                 (Fade_networker — Strategy & Orchestration)"
 echo -e "    • @cto                 (CTO — Technical Architecture & Stack)"
 echo -e "    • @fullstack-dev       (Fullstack Dev — Engineering & APIs)"
 echo -e "    • @qa-tester           (QA Tester — Automation & Validation)"

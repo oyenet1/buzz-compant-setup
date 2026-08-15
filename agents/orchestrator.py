@@ -128,13 +128,13 @@ class SwarmOrchestrator:
         if not self.agents:
             ceo = SwarmAgent(
                 "ceo",
-                "Hermes CEO",
+                "Fade_networker",
                 "Executive Orchestrator",
-                f"You are Hermes, the CEO and orchestrator of {COMPANY_NAME}. Lead the swarm, delegate tasks, and drive client success.",
+                f"You are Fade_networker, the CEO and orchestrator of {COMPANY_NAME}. Lead the swarm, delegate tasks, and drive client success.",
                 self.master_privkey,
             )
             self.agents["ceo"] = ceo
-            logger.info("Loaded default fallback CEO agent.")
+            logger.info("Loaded default fallback CEO agent (Fade_networker).")
 
     async def generate_llm_response(self, agent: SwarmAgent, prompt: str, context: Optional[str] = None) -> str:
         """Invokes the configured LLM provider for the agent."""
