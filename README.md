@@ -163,7 +163,19 @@ Agents can call real tools (not just chat). Built-in:
 |---|---|
 | `generate_pdf` | Writes a proposal / quote / SOW / NDA draft PDF to `./data/exports/` (includes company logo) |
 | `list_pdf_exports` | Lists generated PDFs |
+| `generate_video_omni` | Google Gemini Omni Flash video (needs `GOOGLE_API_KEY`) |
+| `generate_video_veo` | Google Veo 3.1 cinematic video (needs `GOOGLE_API_KEY`) |
+| `generate_video_heygen` | HeyGen avatar / Video Agent (needs `HEYGEN_API_KEY`) |
 | `firecrawl_scrape` / `firecrawl_search` | Live web research (needs `FIRECRAWL_API_KEY`) |
+
+### HeyGen MCP (Cursor / Agent chat)
+
+Remote MCP for Cursor Agent mode (OAuth — no API key): [`https://mcp.heygen.com/mcp/v1/`](https://mcp.heygen.com/mcp/v1/)
+
+- Project config: [`.cursor/mcp.json`](.cursor/mcp.json)
+- Docs: [developers.heygen.com/mcp/overview](https://developers.heygen.com/mcp/overview) · [Cursor setup](https://developers.heygen.com/mcp/cursor)
+- After adding: **Cursor Settings → MCP** → connect HeyGen (browser OAuth on first use)
+- Swarm Docker agents still use `HEYGEN_API_KEY` via `generate_video_heygen`; MCP is for Cursor chat
 
 ### Brand assets (company logo)
 

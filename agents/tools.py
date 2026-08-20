@@ -25,6 +25,7 @@ import os
 from typing import Any, Callable, Dict, List, Optional
 
 import pdf_export
+import video_gen
 
 logger = logging.getLogger("tools")
 
@@ -117,6 +118,66 @@ def tool_firecrawl_search(query: str, limit: int = 5) -> Dict[str, Any]:
         return {"ok": False, "error": str(e)}
 
 
+def tool_generate_video_omni(
+    prompt: str,
+    aspect_ratio: str = "16:9",
+    previous_interaction_id: str = "",
+) -> Dict[str, Any]:
+    return video_gen.generate_omni_video(
+        prompt=prompt,
+        aspect_ratio=aspect_ratio,
+        previous_interaction_id=previous_interaction_id or "",
+    )
+
+
+def tool_generate_video_veo(
+    prompt: str,
+    fast: bool = False,
+    aspect_ratio: str = "16:9",
+    duration_seconds: int = 6,
+    resolution: str = "720p",
+    poll: bool = True,
+) -> Dict[str, Any]:
+    return video_gen.generate_veo_video(
+        prompt=prompt,
+        fast=bool(fast),
+        aspect_ratio=aspect_ratio,
+        duration_seconds=duration_seconds,
+        resolution=resolution,
+        poll=bool(poll),
+    )
+
+
+def tool_generate_video_heygen(
+    prompt: str = "",
+    script: str = "",
+    title: str = "Bonifade video",
+    avatar_id: str = "",
+    voice_id: str = "",
+    use_agent: bool = True,
+) -> Dict[str, Any]:
+    return video_gen.generate_heygen_video(
+        prompt=prompt,
+        script=script,
+        title=title,
+        avatar_id=avatar_id,
+        voice_id=voice_id,
+        use_agent=bool(use_agent),
+    )
+
+
+def tool_heygen_status(video_id: str = "", session_id: str = "") -> Dict[str, Any]:
+    return video_gen.heygen_status(video_id=video_id, session_id=session_id)
+
+
+def tool_list_video_jobs(limit: int = 20) -> Dict[str, Any]:
+    return video_gen.list_video_jobs(limit=limit)
+
+
+def tool_video_providers_status() -> Dict[str, Any]:
+    return video_gen.video_providers_status()
+
+
 # ─── Registry (add new tools here) ─────────────────────────────────────────────
 
 TOOL_SPECS: Dict[str, Dict[str, Any]] = {
@@ -144,6 +205,46 @@ TOOL_SPECS: Dict[str, Dict[str, Any]] = {
         "handler": tool_firecrawl_search,
         "args": ["query", "limit?"],
     },
+    "generate_video_omni": {
+        "description": (
+            "Generate/edit short video with Google Gemini Omni Flash (default video model). "
+            "Needs GOOGLE_API_KEY. Pass previous_interaction_id to refine conversationally."
+        ),
+        "handler": tool_generate_video_omni,
+        "args": ["prompt", "aspect_ratio?", "previous_interaction_id?"],
+    },
+    "generate_video_veo": {
+        "description": (
+            "Generate cinematic video with Google Veo 3.1 (native audio). "
+            "Needs GOOGLE_API_KEY. Set fast=true for veo-3.1-fast. duration_seconds: 4|6|8."
+        ),
+        "handler": tool_generate_video_veo,
+        "args": ["prompt", "fast?", "aspect_ratio?", "duration_seconds?", "resolution?", "poll?"],
+    },
+    "generate_video_heygen": {
+        "description": (
+            "Generate presenter/avatar video via HeyGen (needs HEYGEN_API_KEY). "
+            "Default uses Video Agent (prompt). For classic avatar mode set use_agent=false "
+            "and provide avatar_id + voice_id (or HEYGEN_AVATAR_ID / HEYGEN_VOICE_ID)."
+        ),
+        "handler": tool_generate_video_heygen,
+        "args": ["prompt?", "script?", "title?", "avatar_id?", "voice_id?", "use_agent?"],
+    },
+    "heygen_status": {
+        "description": "Check HeyGen video_id or video-agent session_id status.",
+        "handler": tool_heygen_status,
+        "args": ["video_id?", "session_id?"],
+    },
+    "list_video_jobs": {
+        "description": "List recent video generation job records under data/exports/videos/.",
+        "handler": tool_list_video_jobs,
+        "args": ["limit?"],
+    },
+    "video_providers_status": {
+        "description": "Show which video providers (Omni/Veo/HeyGen) are configured.",
+        "handler": tool_video_providers_status,
+        "args": [],
+    },
 }
 
 
@@ -157,6 +258,8 @@ def tool_catalog_for_prompt(agent_id: str = "") -> str:
         "```",
         "After tool results arrive, continue. When finished, give the final answer (no tool block).",
         "For client deliverables (proposal, quote, SOW, NDA draft), prefer generate_pdf so a file is produced.",
+        "For demo/ad videos: prefer generate_video_omni (fast/iterative), generate_video_veo (cinematic), "
+        "or generate_video_heygen (presenter avatar).",
         "Do not invent file paths — use tool results. Payment collection tools do not exist.",
         "",
         "Available tools:",
