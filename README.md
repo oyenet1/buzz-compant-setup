@@ -76,8 +76,8 @@ Deploy the complete stack to any Ubuntu, Debian, CentOS, Fedora, or Rocky Linux 
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/bonifade/buzz-swarm-setup.git
-cd buzz-swarm-setup
+git clone git@github.com:oyenet1/buzz-compant-setup.git
+cd buzz-compant-setup
 
 # 2. Run the interactive installer
 chmod +x install.sh
