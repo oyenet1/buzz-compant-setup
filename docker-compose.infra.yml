@@ -1,0 +1,41 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# Optional: join Bonifade infra Swarm overlay (Documents/infra)
+# ═══════════════════════════════════════════════════════════════════════════════
+# Enabled by ./manage.sh when USE_INFRA_OVERLAY=true in .env.
+#
+# Matches ~/Documents/infra (oyenet1/postgres-vps-setup):
+#   Overlay network name : infrastructure  (INFRA_NETWORK_NAME)
+#   Postgres (apps)      : pgbouncer:6432  (pooler — preferred)
+#   Postgres (direct)    : postgres:5432   (admin only)
+#   Redis (apps)         : redis-proxy:6379
+#
+# Overlay is attachable in infra's compose. Confirm on VPS:
+#   docker network ls | grep infrastructure
+#
+# Create a dedicated DB once (example):
+#   docker run --rm --network infrastructure postgres:17-alpine \
+#     psql -h postgres -U postgres -c "CREATE DATABASE buzz;"
+#
+# Then in Buzz .env:
+#   USE_INFRA_OVERLAY=true
+#   INFRA_OVERLAY_NETWORK=infrastructure
+#   USE_EXTERNAL_POSTGRES=true
+#   DATABASE_URL=postgres://postgres:PASS@pgbouncer:6432/buzz
+#   REDIS_URL=redis://:PASS@redis-proxy:6379/0
+# ═══════════════════════════════════════════════════════════════════════════════
+
+networks:
+  infra:
+    external: true
+    name: ${INFRA_OVERLAY_NETWORK:-infrastructure}
+
+services:
+  relay:
+    networks:
+      - buzz-network
+      - infra
+
+  agent-orchestrator:
+    networks:
+      - buzz-network
+      - infra

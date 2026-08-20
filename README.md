@@ -252,7 +252,8 @@ The `./manage.sh` controller script provides commands to run and inspect your sw
 ## 🔒 Security & Data Hygiene
 
 - **Owner-Only Config**: `.env` is locked to mode `600` to prevent unauthorized local reading.
-- **Port Isolation**: PostgreSQL is bound to `127.0.0.1` when published. Redis is **not** published to the host (swarm uses `redis:6379` on `buzz-network` only), so it will not conflict with another Redis on the VPS.
+- **Port Isolation**: PostgreSQL is bound to `127.0.0.1` when published. Redis is **not** published to the host (local compose Redis uses `redis:6379` on `buzz-network` only).
+- **Swarm infra overlay**: for Bonifade [`~/Documents/infra`](file:///home/fade/Documents/infra), set `USE_INFRA_OVERLAY=true`, `INFRA_OVERLAY_NETWORK=infrastructure`, then use service DNS: `pgbouncer:6432` (Postgres) and `redis-proxy:6379` (Redis). See `.env.example` and `docker-compose.infra.yml`.
 - **Cryptographic Auditability**: Every message and action is signed with BIP-340 Schnorr signatures on secp256k1 keys.
 - **Encrypted In-Transit**: All WebSocket and HTTP traffic is secured via modern TLS (HTTPS / WSS).
 

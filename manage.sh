@@ -30,12 +30,24 @@ if [ -f .env ]; then
 fi
 
 # Detect Docker Compose command
-DOCKER_COMPOSE="docker compose"
+DOCKER_COMPOSE_BIN="docker compose"
 if ! docker compose version >/dev/null 2>&1; then
     if command -v docker-compose >/dev/null 2>&1; then
-        DOCKER_COMPOSE="docker-compose"
+        DOCKER_COMPOSE_BIN="docker-compose"
     fi
 fi
+
+# Base compose file; optionally join Swarm overlay (infra) for external DB/Redis
+COMPOSE_FILES=(-f docker-compose.yml)
+if [ "${USE_INFRA_OVERLAY}" = "true" ] || [ "${USE_INFRA_OVERLAY}" = "1" ] || [ "${USE_INFRA_OVERLAY}" = "yes" ]; then
+    if [ ! -f docker-compose.infra.yml ]; then
+        echo -e "${RED}USE_INFRA_OVERLAY is set but docker-compose.infra.yml is missing.${NC}"
+        exit 1
+    fi
+    COMPOSE_FILES+=(-f docker-compose.infra.yml)
+fi
+
+DOCKER_COMPOSE="$DOCKER_COMPOSE_BIN ${COMPOSE_FILES[*]}"
 
 show_help() {
     echo -e "${CYAN}${BOLD}"
@@ -64,6 +76,7 @@ show_help() {
     echo -e "    ${GREEN}send${NC} <channel> <msg>   Post a direct message into a Buzz channel"
     echo -e "    ${GREEN}psql${NC}                   Open an interactive PostgreSQL database shell"
     echo -e "    ${GREEN}redis-cli${NC}              Open an interactive Redis CLI session"
+    echo -e "    ${GREEN}networks${NC}               Show Buzz + infra overlay network attachments"
     echo -e "    ${GREEN}help${NC}                   Show this help message\n"
 }
 
@@ -92,6 +105,9 @@ get_active_services() {
 case "$1" in
     start)
         echo -e "${GREEN}Starting Buzz Company Swarm (Dynamic Discovery)...${NC}"
+        if [ "${USE_INFRA_OVERLAY}" = "true" ] || [ "${USE_INFRA_OVERLAY}" = "1" ] || [ "${USE_INFRA_OVERLAY}" = "yes" ]; then
+            echo -e "${CYAN}ℹ Joining Swarm overlay network: ${INFRA_OVERLAY_NETWORK:-infrastructure}${NC}"
+        fi
         TARGET_SERVICES=$(get_active_services)
         # shellcheck disable=SC2086
         $DOCKER_COMPOSE up -d $TARGET_SERVICES
@@ -272,6 +288,21 @@ asyncio.run(send())
         else
             docker exec -it buzz-redis redis-cli
         fi
+        ;;
+
+    networks)
+        echo -e "${CYAN}${BOLD}Buzz / infra network attachments${NC}\n"
+        echo -e "USE_INFRA_OVERLAY=${USE_INFRA_OVERLAY:-false}"
+        echo -e "INFRA_OVERLAY_NETWORK=${INFRA_OVERLAY_NETWORK:-infrastructure}"
+        echo -e "Compose files: ${COMPOSE_FILES[*]}\n"
+        docker network ls --filter driver=overlay
+        echo ""
+        for c in buzz-relay buzz-agent-orchestrator buzz-postgres buzz-redis; do
+            if docker inspect "$c" >/dev/null 2>&1; then
+                echo -e "${BOLD}$c${NC}"
+                docker inspect "$c" --format '{{range $k,$v := .NetworkSettings.Networks}}  - {{$k}}{{println}}{{end}}'
+            fi
+        done
         ;;
 
     help|--help|-h|"")
