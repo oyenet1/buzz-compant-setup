@@ -64,8 +64,10 @@ services:
       fi'
     volumes:
       - buzz-redis-data:/data
-    ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
+    # Not published to the host — avoids clashing with other Redis on the VPS.
+    # Swarm services reach it as redis:6379 on buzz-network (see REDIS_URL).
+    # To debug from the host: ./manage.sh redis-cli  (docker exec, no host port needed)
+    # Optional host bind (pick a free port):  "127.0.0.1:${REDIS_PORT:-6389}:6379"
     networks:
       - buzz-network
     healthcheck:

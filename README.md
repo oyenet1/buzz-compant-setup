@@ -252,7 +252,7 @@ The `./manage.sh` controller script provides commands to run and inspect your sw
 ## 🔒 Security & Data Hygiene
 
 - **Owner-Only Config**: `.env` is locked to mode `600` to prevent unauthorized local reading.
-- **Port Isolation**: PostgreSQL (5432) and Redis (6379) are bound strictly to `127.0.0.1`.
+- **Port Isolation**: PostgreSQL is bound to `127.0.0.1` when published. Redis is **not** published to the host (swarm uses `redis:6379` on `buzz-network` only), so it will not conflict with another Redis on the VPS.
 - **Cryptographic Auditability**: Every message and action is signed with BIP-340 Schnorr signatures on secp256k1 keys.
 - **Encrypted In-Transit**: All WebSocket and HTTP traffic is secured via modern TLS (HTTPS / WSS).
 

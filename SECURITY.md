@@ -12,7 +12,7 @@ The Buzz Hive Mind platform operates on a cryptographic Nostr substrate where al
 - **Key Derivation**: All secrets (Postgres passwords, Redis auth, Nostr keys, JWT secrets, Webhook tokens) are generated using cryptographic pseudo-random number generators (`openssl rand -base64 24` or `secrets.randbits(256)`).
 
 ### 2. Network Isolation & Firewall
-- **Internal Services**: PostgreSQL (port 5432) and Redis (port 6379) are bound exclusively to `127.0.0.1` and internal Docker bridge networks. They must never be exposed to the public internet.
+- **Internal Services**: PostgreSQL may be bound to `127.0.0.1` for local admin; Redis is **not** published to the host by default — swarm containers reach it as `redis:6379` on `buzz-network` only. They must never be exposed to the public internet.
 - **Reverse Proxy**: Public access is routed strictly through Caddy or Nginx with TLS encryption (HTTPS/WSS) and HTTP-to-HTTPS redirection.
 
 ### 3. Anti-Spam & Rate Limiting Guardrails

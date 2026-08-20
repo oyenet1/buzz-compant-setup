@@ -510,7 +510,7 @@ echo -e "  ${BOLD}🌐 Platform Access Endpoints:${NC}"
 echo -e "    • Web Workspace:       ${CYAN}${PUBLIC_URL}${NC}"
 echo -e "    • Buzz WebSocket Relay: ${CYAN}${RELAY_PUBLIC_URL}${NC}"
 echo -e "    • PostgreSQL Database: 127.0.0.1:5432 (User: buzz)"
-echo -e "    • Redis Pub/Sub:       127.0.0.1:6379"
+echo -e "    • Redis Pub/Sub:       internal only (redis:6379 on buzz-network — not published to host)"
 echo ""
 echo -e "  ${BOLD}📱 Integrated Communication Channels:${NC}"
 if [ "$CFG_TELEGRAM_ENABLED" = "true" ] && [ -n "$CFG_TELEGRAM_BOT_TOKEN" ]; then
