@@ -147,10 +147,13 @@ services:
     env_file:
       - .env
     volumes:
+      - ./agents:/app/agents:ro
+      - ./assets:/app/assets:ro
       - ./departments:/app/departments:ro
       - ./marketing:/app/marketing:ro
       - ./workflows:/app/workflows:ro
       - ./data:/app/data
+      - ./SOUL.md:/app/SOUL.md:ro
     networks:
       - buzz-network
     healthcheck:

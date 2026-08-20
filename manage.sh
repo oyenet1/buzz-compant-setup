@@ -55,6 +55,7 @@ show_help() {
     echo -e "    ${GREEN}r2-status${NC}              Check Cloudflare R2 bucket connection, files & size"
     echo -e "    ${GREEN}r2-backup${NC}              Create a snapshot and upload immediately to Cloudflare R2"
     echo -e "    ${GREEN}r2-sync-marketing${NC}      Sync all marketing books and playbooks to Cloudflare R2"
+    echo -e "    ${GREEN}exports${NC}                List generated PDF files in data/exports/"
     echo -e "    ${GREEN}seed${NC}                   Re-seed company channels, baseline goals & department agents"
     echo -e "    ${GREEN}chat${NC}                   Open interactive terminal chat with the CEO / Swarm"
     echo -e "    ${GREEN}test-all${NC}               Run diagnostic connectivity tests on all AI & messaging APIs"
@@ -177,6 +178,16 @@ case "$1" in
 
     r2-sync-marketing)
         python3 scripts/r2_storage.py sync-marketing
+        ;;
+
+    exports)
+        echo -e "${GREEN}PDF exports (./data/exports)...${NC}"
+        python3 - <<'PY'
+import json, sys
+sys.path.insert(0, "agents")
+from tools import execute_tool
+print(json.dumps(execute_tool("list_pdf_exports", {"limit": 30}), indent=2))
+PY
         ;;
 
     seed)

@@ -11,13 +11,18 @@ import http.server
 import json
 import logging
 import os
+import re
 import sys
 import threading
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
 import websockets
+
+_AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _AGENT_DIR not in sys.path:
+    sys.path.insert(0, _AGENT_DIR)
 
 # Import our pure-python Nostr utilities
 from nostr_util import (
@@ -32,6 +37,8 @@ from nostr_util import (
     generate_keypair,
     get_pubkey_from_privkey,
 )
+
+from tools import ENABLE_AGENT_TOOLS, execute_tool, tool_catalog_for_prompt
 
 logging.basicConfig(
     level=logging.INFO,
@@ -68,6 +75,37 @@ if not os.path.exists(MARKETING_DIR) and os.path.exists("marketing"):
     MARKETING_DIR = "marketing"
 if not os.path.exists(DATA_DIR) and os.path.exists("data"):
     DATA_DIR = "data"
+
+MAX_TOOL_ROUNDS = int(os.getenv("MAX_TOOL_ROUNDS", "5"))
+_TOOL_BLOCK_RE = re.compile(r"```tool\s*(\{.*?\})\s*```", re.DOTALL | re.IGNORECASE)
+
+
+def parse_tool_call(text: str) -> Optional[Tuple[str, Dict[str, Any]]]:
+    if not text:
+        return None
+    match = _TOOL_BLOCK_RE.search(text)
+    raw = match.group(1) if match else None
+    if not raw:
+        bare = re.search(
+            r'\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"args"\s*:\s*(\{.*?\})\s*\}',
+            text,
+            re.DOTALL,
+        )
+        if not bare:
+            return None
+        try:
+            return bare.group(1), json.loads(bare.group(2))
+        except json.JSONDecodeError:
+            return None
+    try:
+        payload = json.loads(raw)
+        name = payload.get("name")
+        args = payload.get("args") or {}
+        if not name or not isinstance(args, dict):
+            return None
+        return str(name), args
+    except json.JSONDecodeError:
+        return None
 
 
 class SwarmAgent:
@@ -148,6 +186,13 @@ class SwarmOrchestrator:
     async def generate_llm_response(self, agent: SwarmAgent, prompt: str, context: Optional[str] = None) -> str:
         """Invokes the configured LLM provider for the agent."""
         full_system = f"{agent.system_prompt}\nCompany: {COMPANY_NAME}\nRole: {agent.role}\n"
+        full_system += (
+            "\nWhen the user asks for a proposal, quote, SOW, NDA draft, or report file, "
+            "use the generate_pdf tool so a real PDF is saved under data/exports/.\n"
+            "Do not claim payment collection — quotes/pricing only.\n"
+        )
+        if ENABLE_AGENT_TOOLS:
+            full_system += "\n" + tool_catalog_for_prompt(agent.agent_id) + "\n"
         if context:
             full_system += f"\nConversation Context:\n{context}\n"
 
@@ -392,6 +437,47 @@ class SwarmOrchestrator:
         # Fallback offline simulation response
         return f"[{agent.name} - {agent.role}]\nReceived: {prompt}\n\n(AI providers currently unreachable. Set valid API keys in .env.)"
 
+    async def run_agent_with_tools(self, agent: SwarmAgent, user_prompt: str) -> Tuple[str, List[Dict[str, Any]]]:
+        """LLM ↔ tool loop (PDF generation, Firecrawl, etc.)."""
+        tool_trace: List[Dict[str, Any]] = []
+        context: Optional[str] = None
+        prompt = user_prompt
+
+        if not ENABLE_AGENT_TOOLS:
+            return await self.generate_llm_response(agent, prompt), tool_trace
+
+        for round_i in range(MAX_TOOL_ROUNDS):
+            text = await self.generate_llm_response(agent, prompt, context=context)
+            parsed = parse_tool_call(text)
+            if not parsed:
+                return text.strip(), tool_trace
+
+            tool_name, tool_args = parsed
+            logger.info(
+                "Tool call round=%s agent=@%s tool=%s",
+                round_i + 1,
+                agent.agent_id,
+                tool_name,
+            )
+            result = await asyncio.to_thread(execute_tool, tool_name, tool_args, agent.agent_id)
+            tool_trace.append({"name": tool_name, "args": tool_args, "result": result})
+            context = (context or "") + (
+                f"\n\nTool result [{tool_name}]:\n{json.dumps(result, ensure_ascii=False)[:8000]}\n"
+                "Continue with another tool if needed, otherwise give the final user-facing reply "
+                "including any generated file path/filename."
+            )
+            prompt = (
+                f"Original user request:\n{user_prompt}\n\n"
+                f"Tool `{tool_name}` returned. Call another tool or produce the final answer."
+            )
+
+        final = await self.generate_llm_response(
+            agent,
+            f"Original request:\n{user_prompt}\n\nProduce the final answer now. Do not call more tools.",
+            context=context,
+        )
+        return final.strip(), tool_trace
+
     async def handle_event(self, event: Dict[str, Any]):
         """Processes incoming events from Buzz Relay."""
         kind = event.get("kind")
@@ -415,8 +501,7 @@ class SwarmOrchestrator:
             if f"@{agent_id}" in lower_content or f"@{agent.name.lower()}" in lower_content:
                 target_agent = agent
                 break
-
-        if not target_agent:
+        else:
             # Department keyword routing
             if any(k in lower_content for k in ["code", "bug", "build", "api", "database", "backend", "frontend"]):
                 target_agent = self.agents.get("fullstack-dev", target_agent)
@@ -424,9 +509,16 @@ class SwarmOrchestrator:
                 target_agent = self.agents.get("cto", target_agent)
             elif any(k in lower_content for k in ["test", "qa", "verify", "regression"]):
                 target_agent = self.agents.get("qa-tester", target_agent)
+            elif any(k in lower_content for k in ["pdf", "proposal", "quote", "document", "sow"]):
+                if any(k in lower_content for k in ["quote", "pricing", "naira", "estimate"]):
+                    target_agent = self.agents.get("billing-officer", target_agent)
+                elif any(k in lower_content for k in ["nda", "contract", "legal"]):
+                    target_agent = self.agents.get("legal-officer", target_agent)
+                else:
+                    target_agent = self.agents.get("marketer-content", target_agent)
             elif any(k in lower_content for k in ["marketing", "lead", "seo", "campaign", "growth"]):
                 target_agent = self.agents.get("marketer-growth", target_agent)
-            elif any(k in lower_content for k in ["invoice", "quote", "billing", "payment", "naira", "pricing"]):
+            elif any(k in lower_content for k in ["invoice", "billing", "payment", "naira", "pricing"]):
                 target_agent = self.agents.get("billing-officer", target_agent)
             elif any(k in lower_content for k in ["contract", "nda", "terms", "legal", "procurement"]):
                 target_agent = self.agents.get("legal-officer", target_agent)
@@ -434,9 +526,17 @@ class SwarmOrchestrator:
                 target_agent = self.agents.get("devops-agent", target_agent)
 
         if target_agent and content:
-            # Generate response via Gemini 3.5 Flash
-            response_text = await self.generate_llm_response(target_agent, content)
-            
+            response_text, tool_trace = await self.run_agent_with_tools(target_agent, content)
+
+            for step in tool_trace:
+                if step.get("name") == "generate_pdf":
+                    res = step.get("result") or {}
+                    if res.get("ok"):
+                        response_text += (
+                            f"\n\n---\n📄 PDF ready: `{res.get('filename')}` "
+                            f"→ `{res.get('path')}` ({res.get('bytes')} bytes)"
+                        )
+
             # Prepare reply tags
             reply_tags = [
                 ["e", event_id, "", "reply"],
@@ -467,7 +567,10 @@ class SwarmOrchestrator:
             # Send back to Buzz Relay (which bridges automatically dispatch to Telegram, WhatsApp & SMTP)
             if self.ws:
                 await self.ws.send(json.dumps(["EVENT", response_event]))
-                logger.info(f"✓ Autonomous response published from @{target_agent.agent_id} (ID={response_event['id'][:8]}...)")
+                logger.info(
+                    f"✓ Autonomous response published from @{target_agent.agent_id} "
+                    f"(ID={response_event['id'][:8]}..., tools={len(tool_trace)})"
+                )
 
     async def autonomous_scheduler(self):
         """Background autonomous scheduler: Site monitor health checks & CEO briefings."""

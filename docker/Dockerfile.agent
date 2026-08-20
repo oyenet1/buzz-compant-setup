@@ -22,8 +22,13 @@ RUN pip install --no-cache-dir \
     "openai>=1.30.0" \
     "anthropic>=0.25.0" \
     "cryptography>=42.0.0" \
-    "pyyaml>=6.0"
+    "pyyaml>=6.0" \
+    "fpdf2>=2.7.0"
 
 COPY . /app
+
+ENV PYTHONPATH=/app/agents:/app
+ENV DATA_DIR=/app/data
+ENV ENABLE_AGENT_TOOLS=true
 
 CMD ["python3", "-u", "/app/agents/orchestrator.py"]

@@ -155,6 +155,46 @@ All marketing agents are grounded in the full-text marketing and direct-response
 
 ---
 
+## 🧰 Agent tools (PDF & more)
+
+Agents can call real tools (not just chat). Built-in:
+
+| Tool | What it does |
+|---|---|
+| `generate_pdf` | Writes a proposal / quote / SOW / NDA draft PDF to `./data/exports/` (includes company logo) |
+| `list_pdf_exports` | Lists generated PDFs |
+| `firecrawl_scrape` / `firecrawl_search` | Live web research (needs `FIRECRAWL_API_KEY`) |
+
+### Brand assets (company logo)
+
+Logos are in [`assets/`](assets/) and [`assets/brand/`](assets/brand/):
+
+| File | Use |
+|---|---|
+| `assets/brand/logo-icon.jpeg` | Icon mark (PDF header default) |
+| `assets/brand/logo-full.jpeg` | Full wordmark |
+| `assets/brand/logo-512.png` | Square / app icon |
+| `assets/brand/favicon.svg` | Favicon |
+
+Override with `COMPANY_LOGO_PATH` in `.env`. Swap files in `assets/brand/` anytime, then restart the orchestrator.
+
+Example chat:
+
+```bash
+./manage.sh send executive "@marketer-content Generate a PDF proposal for Acme Logistics — web app MVP, 3 milestones"
+./manage.sh exports
+```
+
+### Add another tool (e.g. DOCX, calendar)
+
+1. Implement `tool_your_name(...)` in [`agents/tools.py`](agents/tools.py)  
+2. Register it in `TOOL_SPECS`  
+3. Rebuild/restart: `./manage.sh update` or `./manage.sh restart agent-orchestrator`  
+
+See the docstring at the top of `agents/tools.py`.
+
+---
+
 ## 🛠 Management & CLI Operations
 
 The `./manage.sh` controller script provides commands to run and inspect your swarm:
