@@ -59,7 +59,12 @@ XAI_API_KEY = (os.getenv("XAI_API_KEY") or os.getenv("GROK_API_KEY") or "").stri
 MINIMAX_API_KEY = os.getenv("MINIMAX_API_KEY", "").strip()
 GLM_API_KEY = (os.getenv("GLM_API_KEY") or os.getenv("ZHIPU_API_KEY") or "").strip()
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY", "").strip()
-META_AI_API_KEY = (os.getenv("META_AI_API_KEY") or os.getenv("LLAMA_API_KEY") or os.getenv("GROQ_API_KEY") or "").strip()
+META_AI_API_KEY = (os.getenv("META_AI_API_KEY") or os.getenv("LLAMA_API_KEY") or os.getenv("GROQ_API_KEY") or os.getenv("MODEL_API_KEY") or "").strip()
+META_AI_ENDPOINT = os.getenv(
+    "META_AI_ENDPOINT",
+    "https://api.meta.ai/v1/chat/completions",
+).strip()
+META_AI_MODEL = os.getenv("META_AI_MODEL", "muse-spark-1.2-contributor").strip()
 
 DEFAULT_PROVIDER = os.getenv("DEFAULT_AI_PROVIDER", "gemini")
 DEFAULT_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-3.5-flash")
@@ -368,32 +373,46 @@ class SwarmOrchestrator:
                 except Exception as e:
                     logger.warning(f"MiniMax ({mm_model}) failed: {e}")
 
-        # 8. Fallback: Meta AI / Llama / Muse Direct (Llama 3.3 70B / Meta Muse)
+        # 8. Fallback: Meta Muse Spark (Contributor → Standard 1.2 via Meta Model API)
         if META_AI_API_KEY:
-            try:
-                endpoint = os.getenv("META_AI_ENDPOINT", "https://api.groq.com/openai/v1/chat/completions")
-                model_name = os.getenv("META_AI_MODEL", "llama-3.3-70b-versatile")
-                async with httpx.AsyncClient(timeout=60.0) as client:
-                    resp = await client.post(
-                        endpoint,
-                        headers={"Authorization": f"Bearer {META_AI_API_KEY}"},
-                        json={
-                            "model": model_name,
-                            "messages": [
-                                {"role": "system", "content": full_system},
-                                {"role": "user", "content": prompt},
-                            ],
-                        },
-                    )
-                    if resp.status_code == 200:
-                        res_json = resp.json()
-                        return res_json["choices"][0]["message"]["content"]
-            except Exception as e:
-                logger.warning(f"Meta AI / Llama invocation failed: {e}")
+            muse_models = []
+            for candidate in [
+                META_AI_MODEL,
+                "muse-spark-1.2-contributor",
+                "muse-spark-1.2",
+                "muse-spark-1.1",
+            ]:
+                if candidate and candidate not in muse_models:
+                    muse_models.append(candidate)
+
+            for model_name in muse_models:
+                try:
+                    async with httpx.AsyncClient(timeout=60.0) as client:
+                        resp = await client.post(
+                            META_AI_ENDPOINT,
+                            headers={"Authorization": f"Bearer {META_AI_API_KEY}"},
+                            json={
+                                "model": model_name,
+                                "messages": [
+                                    {"role": "system", "content": full_system},
+                                    {"role": "user", "content": prompt},
+                                ],
+                            },
+                        )
+                        if resp.status_code == 200:
+                            res_json = resp.json()
+                            return res_json["choices"][0]["message"]["content"]
+                        logger.warning(
+                            f"Meta Muse ({model_name}) returned status {resp.status_code}: {resp.text[:100]}"
+                        )
+                except Exception as e:
+                    logger.warning(f"Meta Muse ({model_name}) invocation failed: {e}")
 
         # 9. Fallback: OpenRouter Universal Gateway (Access to Claude Opus 4.8, Grok 4.5, DeepSeek V4, GLM 5.2, MiniMax 3)
         if OPENROUTER_API_KEY:
             openrouter_models = [
+                "meta-llama/muse-spark-1.2-contributor",
+                "meta-llama/muse-spark-1.2",
                 "anthropic/claude-4-8-opus",
                 "x-ai/grok-4.5",
                 "deepseek/deepseek-v4-flash",

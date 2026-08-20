@@ -102,23 +102,26 @@ async def test_xai(api_key: str):
 
 async def test_meta_ai(api_key: str):
     if not api_key:
-        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Meta AI / Llama / Muse':<25}{NC} (No key set in .env)")
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Meta Muse Spark':<25}{NC} (No key set in .env)")
         return
     try:
-        endpoint = os.getenv("META_AI_ENDPOINT", "https://api.groq.com/openai/v1/models")
+        endpoint = os.getenv("META_AI_ENDPOINT", "https://api.meta.ai/v1/chat/completions")
         if "chat/completions" in endpoint:
             endpoint = endpoint.replace("chat/completions", "models")
+        elif endpoint.rstrip("/").endswith("/v1"):
+            endpoint = endpoint.rstrip("/") + "/models"
         async with httpx.AsyncClient(timeout=10.0) as client:
             r = await client.get(
                 endpoint,
                 headers={"Authorization": f"Bearer {api_key}"},
             )
             if r.status_code in [200, 400]:
-                report("Meta AI / Llama / Muse", True, f"{GREEN}200 OK — Token verified{NC}")
+                model = os.getenv("META_AI_MODEL", "muse-spark-1.2-contributor")
+                report("Meta Muse Spark", True, f"{GREEN}OK — {model}{NC}")
             else:
-                report("Meta AI / Llama / Muse", False, f"Status {r.status_code}: {r.text[:80]}")
+                report("Meta Muse Spark", False, f"Status {r.status_code}: {r.text[:80]}")
     except Exception as e:
-        report("Meta AI / Llama / Muse", False, str(e))
+        report("Meta Muse Spark", False, str(e))
 
 
 async def test_openrouter(api_key: str):
