@@ -35,7 +35,12 @@ CHANNELS = [
     {"id": "general", "name": "general", "about": "Company-wide announcements, discussions, and updates"},
     {"id": "executive", "name": "executive", "about": "CEO briefings, strategic decisions, and department escalations"},
     {"id": "engineering", "name": "engineering", "about": "Technical architecture, fullstack code, reviews, and CI/CD"},
-    {"id": "marketing", "name": "marketing", "about": "Market intelligence, SEO, copy, campaigns, and growth"},
+    {"id": "marketing", "name": "marketing", "about": "Mastermind strategy, campaigns, direct-response copy, and growth"},
+    {"id": "marketing-growth", "name": "marketing-growth", "about": "Paid media buying, email sequences, funnels, and kill call logs"},
+    {"id": "creative-lab", "name": "creative-lab", "about": "Maxfusion AI video ads, storyboards, and thumbnail creatives"},
+    {"id": "seo-geo", "name": "seo-geo", "about": "Generative Engine Optimization (GEO), llms.txt, and search rankings"},
+    {"id": "launches", "name": "launches", "about": "Product Hunt, Hacker News, and GTM launch day execution runbooks"},
+    {"id": "analytics", "name": "analytics", "about": "A/B test statistical results, dashboards, CAC/LTV and cohort analytics"},
     {"id": "leads", "name": "leads", "about": "Qualified client leads pipeline, consultation requests & CRM"},
     {"id": "billing", "name": "billing", "about": "Quotations, milestone invoices, payment confirmations (Moniepoint: 7065720177)"},
     {"id": "support", "name": "support", "about": "Customer tickets, onboarding requests, and client success"},
@@ -44,9 +49,13 @@ CHANNELS = [
 
 BASELINE_GOALS = [
     {"title": "First paying client", "target": "1 signed contract", "owner": "Fade_networker (CEO)", "deadline": "2026-09-30"},
+    {"title": "Marketing Mastermind Architecture", "target": "14-agent synchronized swarm execution", "owner": "Head of Marketing", "deadline": "2026-08-31"},
+    {"title": "llms.txt & GEO Deployment", "target": "100% indexing in Perplexity & ChatGPT Search", "owner": "SEO & GEO Lead", "deadline": "2026-08-31"},
+    {"title": "Maxfusion AI Ad Suite", "target": "4 multi-format video ad creatives live", "owner": "Creative Strategist", "deadline": "2026-09-15"},
+    {"title": "Product Hunt Launch Runbook", "target": "Top 3 Product of the Day badge", "owner": "Launch Manager", "deadline": "2026-09-30"},
     {"title": "Qualified leads pipeline", "target": "100 leads in leads DB", "owner": "Marketer Research", "deadline": "2026-09-30"},
-    {"title": "Outreach launched", "target": "First 500-email campaign sent", "owner": "Marketer Growth", "deadline": "2026-08-31"},
-    {"title": "Company website live", "target": "bonifadetechnologies.com current + lead capture", "owner": "Fullstack Dev", "deadline": "2026-08-15"},
+    {"title": "Outreach launched", "target": "5-day soap opera sequence live", "owner": "Email Marketer", "deadline": "2026-08-31"},
+    {"title": "Company website live", "target": "bonifadetechnologies.com score >= 90", "owner": "Site Auditor & Dev", "deadline": "2026-08-15"},
     {"title": "Proposal & contract templates", "target": "MSA, SOW, NDA approved", "owner": "Legal Officer", "deadline": "2026-08-31"},
 ]
 

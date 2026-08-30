@@ -123,6 +123,7 @@ chmod +x install.sh
 
 ## 🤖 Active AI Swarm Department Roster
 
+### Executive, Engineering & Operations Core
 | Agent Handle | Department / Role | System Persona & Responsibilities |
 |---|---|---|
 | **`@ceo`** | **Fade_networker** | Strategic direction, delegation, cross-department oversight, and final approvals. |
@@ -130,20 +131,39 @@ chmod +x install.sh
 | **`@fullstack-dev`** | **Engineering** | Fullstack web apps, REST/GraphQL APIs, database models, frontend interfaces. |
 | **`@qa-tester`** | **Quality Assurance** | Test plan automation, unit/integration testing, regression audits, delivery sign-off. |
 | **`@devops-agent`** | **Infrastructure & SRE** | VPS orchestration, Docker, SSL/TLS, Caddy proxies, CI/CD, backup verification. |
-| **`@marketer-growth`** | **Growth & Outreach** | Multi-channel campaigns, video scripts (HeyGen/Veo), funnel optimization. |
-| **`@marketer-research`** | **Market Intelligence** | Lead scraping with Firecrawl, competitor intelligence, procurement tracking. |
-| **`@marketer-content`** | **Content & Copywriting** | Proposals, case studies, sales copy, technical documentation, whitepapers. |
 | **`@billing-officer`** | **Finance & Invoicing** | Quotations, milestone invoices, Moniepoint account (7065720177) reconciliation. |
 | **`@legal-officer`** | **Legal & Compliance** | MSAs, SOWs, NDAs, terms of service, IP assignment clauses, privacy policies. |
 | **`@support-agent`** | **Client Success** | Customer ticketing, onboarding walkthroughs, maintenance coordination. |
 | **`@site-monitor`** | **Diagnostics & Alerts** | Endpoint uptime, latency tracking, SSL expiry warnings, automated error alerts. |
 
+### Marketing & Growth Swarm
+| Agent Handle | Department / Role | System Persona & Responsibilities |
+|---|---|---|
+| **`@marketer-head`** (`@cmo`) | **Head of Marketing** | The mastermind orchestrating the marketing engine, cross-channel strategy, CAC/LTV. |
+| **`@marketer-site-auditor`** (`@site-auditor`) | **Site Auditor & Analyst** | Full-funnel technical, CRO friction, and performance audits scored strictly 0–100. |
+| **`@marketer-seo`** (`@seo-lead`) | **SEO & GEO Lead** | Search rankings, Generative Engine Optimization (GEO), and standard `llms.txt`. |
+| **`@marketer-copywriter`** (`@copywriter`) | **Direct-Response Copywriter** | Sales letters, VSLs, headlines; copy graded before you see it (`grade_copy`). |
+| **`@marketer-creative`** (`@creative-strategist`)| **Creative Strategist** | AI visual ads generated with Maxfusion, Gemini Omni Flash, Veo 3.1, and HeyGen. |
+| **`@marketer-media-buyer`** (`@media-buyer`) | **Media Buyer** | Paid traffic (Meta/Google/TikTok/X), ad fatigue diagnostics, decisive kill calls. |
+| **`@marketer-email`** (`@email-marketer`) | **Email Marketer** | Full lifecycle sequences written in full, subject lines, and send schedules. |
+| **`@marketer-social`** (`@social-manager`) | **Social Manager** | Platform-native organic posts that survive the algorithmic feed (X, LinkedIn, IG). |
+| **`@marketer-launch`** (`@launch-manager`) | **Launch Manager** | Product Hunt, Hacker News, and GTM launches planned hour by hour. |
+| **`@marketer-pricing`** (`@pricing-strategist`)| **Pricing Strategist** | Pricing tiers, Grand Slam Offers, Alex Hormozi Value Equation math, what to charge & why. |
+| **`@marketer-competitor`** (`@competitor-analyst`)| **Competitor Analyst** | Meta Ad Library reverse-engineering, competitor angle extraction & counter-positioning. |
+| **`@marketer-aso`** (`@aso-specialist`) | **ASO Specialist** | iOS App Store & Google Play metadata, keyword rankings, and screenshot narrative CRO. |
+| **`@marketer-data`** (`@data-analyst`) | **Marketing Data Analyst** | Growth dashboards, A/B test statistical significance (z-scores/p-values), CAC/LTV. |
+| **`@marketer-editor`** (`@editor`) | **Chief Content Editor** | Anti-AI-slop firewall; cuts clichés and fluff before anything ships. |
+| **`@marketer-growth`** | **Growth Campaigns** | Outbound campaigns, conversion funnels, pitch video scripts, social media schedules. |
+| **`@marketer-research`** | **Market Intelligence** | Lead scraping with Firecrawl, competitor intelligence, procurement tracking. |
+| **`@marketer-content`** | **Content & Proposals** | Sales proposals, case studies, technical documentation, whitepapers, email copy. |
+
 ---
 
-## 📚 Marketing Swarm Knowledge Engine
+## 📚 Marketing Swarm Knowledge Engine & Playbooks
 
-All marketing agents are grounded in the full-text marketing and direct-response library located in [`marketing/knowledge/`](marketing/knowledge/):
+All marketing agents are grounded in the full-text marketing and direct-response library located in [`marketing/knowledge/`](marketing/knowledge/) and operational playbooks in [`marketing/playbooks/`](marketing/playbooks/):
 
+* **Master Playbook** — [`marketing/MARKETING_SWARM_PLAYBOOK.md`](marketing/MARKETING_SWARM_PLAYBOOK.md)
 * **Alex Hormozi** — *$100M Offers: Grand Slam Offers & Value Equation*
 * **Akin Alabi** — *How to Sell to Nigerians & Small Business Big Money*
 * **Sabri Suby** — *Sell Like Crazy: The Godfather Offer & 8-Phase Selling System*
@@ -155,18 +175,27 @@ All marketing agents are grounded in the full-text marketing and direct-response
 
 ---
 
-## 🧰 Agent tools (PDF & more)
+## 🧰 Agent Tools (PDF, AI Video, SEO, Audits & More)
 
-Agents can call real tools (not just chat). Built-in:
+Agents can call real tools (not just chat). Built-in tool specs in [`agents/tools.py`](agents/tools.py):
 
-| Tool | What it does |
-|---|---|
-| `generate_pdf` | Writes a proposal / quote / SOW / NDA draft PDF to `./data/exports/` (includes company logo) |
-| `list_pdf_exports` | Lists generated PDFs |
-| `generate_video_omni` | Google Gemini Omni Flash video (needs `GOOGLE_API_KEY`) |
-| `generate_video_veo` | Google Veo 3.1 cinematic video (needs `GOOGLE_API_KEY`) |
-| `generate_video_heygen` | HeyGen avatar / Video Agent (needs `HEYGEN_API_KEY`) |
-| `firecrawl_scrape` / `firecrawl_search` | Live web research (needs `FIRECRAWL_API_KEY`) |
+| Tool | Category | What it does |
+|---|---|---|
+| `generate_pdf` | Client Documents | Writes a proposal / quote / SOW / NDA draft PDF to `./data/exports/` |
+| `list_pdf_exports` | Client Documents | Lists generated PDFs |
+| `site_audit_score` | Site Audit | Scores full-funnel audits 0–100 across Tech, CRO, SEO, Copy, and Security |
+| `generate_llms_txt` | SEO / GEO | Generates standard `llms.txt` and `llms-full.txt` files for AI search engines |
+| `grade_copy` | Copywriting | Pre-grades direct-response copy on 6 pillars (Hook, Pain, Mechanism, Proof, Guarantee, CTA) |
+| `anti_slop_check` | Editorial | Scans and scrubs AI buzzwords, corporate clichés, and hollow filler |
+| `competitor_meta_ad_analyzer` | Intelligence | Reverse-engineers competitor Meta Ad Library hooks, angles, and vulnerabilities |
+| `pricing_calculator` | Monetization | Calculates Alex Hormozi Value Equation metric and 3-tier pricing structures |
+| `ab_test_calculator` | Analytics | Computes statistical significance (z-score, p-value) and lift for A/B conversion tests |
+| `product_hunt_schedule` | Launches | Generates an hour-by-hour operational runbook for Product Hunt launch day |
+| `aso_metadata_analyzer` | Mobile Growth | Validates character limits and keyword optimization for App Store and Google Play |
+| `generate_video_omni` | Creative AI | Google Gemini Omni Flash video (needs `GOOGLE_API_KEY`) |
+| `generate_video_veo` | Creative AI | Google Veo 3.1 cinematic video (needs `GOOGLE_API_KEY`) |
+| `generate_video_heygen` | Creative AI | HeyGen avatar / Video Agent (needs `HEYGEN_API_KEY`) |
+| `firecrawl_scrape` / `firecrawl_search` | Research | Live web scraping & search via Firecrawl (needs `FIRECRAWL_API_KEY`) |
 
 ### HeyGen MCP (Cursor / Agent chat)
 

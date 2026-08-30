@@ -12,8 +12,15 @@ import socket
 import sys
 import time
 
-import httpx
-import websockets
+try:
+    import httpx
+except ImportError:
+    httpx = None
+
+try:
+    import websockets
+except ImportError:
+    websockets = None
 
 # Terminal Colors
 GREEN = "\033[0;32m"
@@ -30,6 +37,9 @@ def report(name: str, status: bool, detail: str = ""):
 
 
 async def test_gemini(api_key: str):
+    if not httpx:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Google Gemini API':<25}{NC} (httpx module not available on host)")
+        return
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Google Gemini API':<25}{NC} (No key set in .env)")
         return
@@ -47,6 +57,9 @@ async def test_gemini(api_key: str):
 
 
 async def test_openai(api_key: str):
+    if not httpx:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'OpenAI API':<25}{NC} (httpx module not available on host)")
+        return
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'OpenAI API':<25}{NC} (No key set in .env)")
         return
@@ -65,6 +78,9 @@ async def test_openai(api_key: str):
 
 
 async def test_anthropic(api_key: str):
+    if not httpx:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Anthropic Claude API':<25}{NC} (httpx module not available on host)")
+        return
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Anthropic Claude API':<25}{NC} (No key set in .env)")
         return
@@ -83,6 +99,9 @@ async def test_anthropic(api_key: str):
 
 
 async def test_xai(api_key: str):
+    if not httpx:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'xAI Grok API':<25}{NC} (httpx module not available on host)")
+        return
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'xAI Grok API':<25}{NC} (No key set in .env)")
         return
@@ -101,6 +120,9 @@ async def test_xai(api_key: str):
 
 
 async def test_meta_ai(api_key: str):
+    if not httpx:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Meta Muse Spark':<25}{NC} (httpx module not available on host)")
+        return
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Meta Muse Spark':<25}{NC} (No key set in .env)")
         return
@@ -125,6 +147,9 @@ async def test_meta_ai(api_key: str):
 
 
 async def test_openrouter(api_key: str):
+    if not httpx:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'OpenRouter API':<25}{NC} (httpx module not available on host)")
+        return
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'OpenRouter API':<25}{NC} (No key set in .env)")
         return
@@ -143,6 +168,9 @@ async def test_openrouter(api_key: str):
 
 
 async def test_firecrawl(api_key: str):
+    if not httpx:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Firecrawl Web Search':<25}{NC} (httpx module not available on host)")
+        return
     if not api_key:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Firecrawl Web Search':<25}{NC} (No key set in .env)")
         return
@@ -152,7 +180,6 @@ async def test_firecrawl(api_key: str):
                 "https://api.firecrawl.dev/v1/scrape",
                 headers={"Authorization": f"Bearer {api_key}"},
             )
-            # 400 or 200 indicates valid auth header was evaluated
             if r.status_code in [200, 400]:
                 report("Firecrawl Web Search", True, f"{GREEN}Auth valid{NC}")
             else:
@@ -162,6 +189,9 @@ async def test_firecrawl(api_key: str):
 
 
 async def test_telegram(token: str):
+    if not httpx:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Telegram Bot':<25}{NC} (httpx module not available on host)")
+        return
     if not token:
         print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Telegram Bot':<25}{NC} (No token set in .env)")
         return
@@ -195,6 +225,9 @@ def test_smtp(host: str, port: int, user: str, password: str):
 
 
 async def test_relay(relay_url: str):
+    if not websockets:
+        print(f"  {YELLOW}○ SKIP{NC}  {BOLD}{'Buzz Relay WebSocket':<25}{NC} (websockets module not available on host)")
+        return
     try:
         async with websockets.connect(relay_url, timeout=5) as ws:
             report("Buzz Relay WebSocket", True, f"{GREEN}Connected to {relay_url}{NC}")
@@ -214,6 +247,76 @@ def test_port(name: str, host: str, port: int):
             report(name, False, f"Port {port} not reachable")
     except Exception as e:
         report(name, False, str(e))
+
+
+def test_departments_and_tools():
+    print(f"\n{BOLD}4. Swarm Department Configs & Specialized Agent Tools:{NC}")
+    import glob
+    import json
+    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../agents")))
+    import tools
+
+    # 1. Test Department Configs
+    dept_files = glob.glob("departments/*.json")
+    valid_count = 0
+    for f in dept_files:
+        try:
+            with open(f, "r") as df:
+                data = json.load(df)
+                if data.get("id") and data.get("name") and data.get("role") and data.get("system_prompt"):
+                    valid_count += 1
+        except Exception as e:
+            report(f"Config: {f}", False, str(e))
+    report("Department JSONs", valid_count == len(dept_files) and valid_count >= 14, f"{GREEN}{valid_count}/{len(dept_files)} department configs valid{NC}")
+
+    # 2. Test Marketing Swarm Tools
+    try:
+        res_audit = tools.execute_tool("site_audit_score", {"url": "https://bonifadetechnologies.com"})
+        report("Tool: site_audit_score", res_audit.get("ok") is True, f"Score: {res_audit.get('overall_score')}/100 ({res_audit.get('rating')})")
+    except Exception as e:
+        report("Tool: site_audit_score", False, str(e))
+
+    try:
+        res_llms = tools.execute_tool("generate_llms_txt", {"company_name": "Bonifade Technologies"})
+        report("Tool: generate_llms_txt", res_llms.get("ok") is True, f"Bytes: {res_llms.get('bytes')}")
+    except Exception as e:
+        report("Tool: generate_llms_txt", False, str(e))
+
+    try:
+        res_grade = tools.execute_tool("grade_copy", {"copy_text": "Stop losing 50% of WhatsApp customers. Our Swarm automates client requests 24/7 with 100% money-back guarantee."})
+        report("Tool: grade_copy", res_grade.get("ok") is True, f"Grade: {res_grade.get('grade')} ({res_grade.get('total_score')}/100)")
+    except Exception as e:
+        report("Tool: grade_copy", False, str(e))
+
+    try:
+        res_slop = tools.execute_tool("anti_slop_check", {"text": "In today's fast-paced digital world, we delve into a game-changing tapestry."})
+        report("Tool: anti_slop_check", res_slop.get("ok") is True, f"Slop Score: {res_slop.get('slop_index')}/100 ({res_slop.get('verdict')})")
+    except Exception as e:
+        report("Tool: anti_slop_check", False, str(e))
+
+    try:
+        res_ab = tools.execute_tool("ab_test_calculator", {"visitors_a": 1000, "conversions_a": 40, "visitors_b": 1000, "conversions_b": 70})
+        report("Tool: ab_test_calculator", res_ab.get("ok") is True, f"Lift: +{res_ab.get('relative_lift_pct')}% (Confidence: {res_ab.get('confidence_level_pct')}%)")
+    except Exception as e:
+        report("Tool: ab_test_calculator", False, str(e))
+
+    try:
+        res_pricing = tools.execute_tool("pricing_calculator", {"base_cost": 2000, "target_margin": 0.70})
+        report("Tool: pricing_calculator", res_pricing.get("ok") is True, f"Hormozi Score: {res_pricing.get('hormozi_value_score')}")
+    except Exception as e:
+        report("Tool: pricing_calculator", False, str(e))
+
+    try:
+        res_ph = tools.execute_tool("product_hunt_schedule", {"product_name": "Buzz Swarm OS", "tagline": "AI Swarm OS"})
+        report("Tool: product_hunt_schedule", res_ph.get("ok") is True, f"Milestones: {len(res_ph.get('schedule', []))} events")
+    except Exception as e:
+        report("Tool: product_hunt_schedule", False, str(e))
+
+    try:
+        res_aso = tools.execute_tool("aso_metadata_analyzer", {"app_name": "Buzz Swarm OS", "subtitle": "AI Automation", "keywords": "ai,agents,crm"})
+        report("Tool: aso_metadata_analyzer", res_aso.get("ok") is True, f"iOS Compliant: {res_aso.get('apple_app_store_compliant')}")
+    except Exception as e:
+        report("Tool: aso_metadata_analyzer", False, str(e))
 
 
 async def main():
@@ -264,8 +367,11 @@ async def main():
         os.getenv("SMTP_APP_PASSWORD", ""),
     )
 
+    test_departments_and_tools()
+
     print(f"\n{CYAN}{BOLD}═══════════════════════════════════════════════════════════════════════{NC}\n")
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+

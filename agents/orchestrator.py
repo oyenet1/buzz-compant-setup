@@ -17,8 +17,15 @@ import threading
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-import httpx
-import websockets
+try:
+    import httpx
+except ImportError:
+    httpx = None
+
+try:
+    import websockets
+except ImportError:
+    websockets = None
 
 _AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
 if _AGENT_DIR not in sys.path:
@@ -113,6 +120,58 @@ def parse_tool_call(text: str) -> Optional[Tuple[str, Dict[str, Any]]]:
         return None
 
 
+AGENT_ALIASES: Dict[str, str] = {
+    # Marketing Swarm Direct Aliases
+    "head-of-marketing": "marketer-head",
+    "marketing-head": "marketer-head",
+    "cmo": "marketer-head",
+    "site-auditor": "marketer-site-auditor",
+    "analyst": "marketer-site-auditor",
+    "seo-lead": "marketer-seo",
+    "seo": "marketer-seo",
+    "geo": "marketer-seo",
+    "geo-lead": "marketer-seo",
+    "copywriter": "marketer-copywriter",
+    "copy": "marketer-copywriter",
+    "creative-strategist": "marketer-creative",
+    "creative": "marketer-creative",
+    "maxfusion": "marketer-creative",
+    "media-buyer": "marketer-media-buyer",
+    "email-marketer": "marketer-email",
+    "email": "marketer-email",
+    "social-manager": "marketer-social",
+    "social": "marketer-social",
+    "launch-manager": "marketer-launch",
+    "launch": "marketer-launch",
+    "product-hunt": "marketer-launch",
+    "pricing-strategist": "marketer-pricing",
+    "pricing": "marketer-pricing",
+    "competitor-analyst": "marketer-competitor",
+    "competitor": "marketer-competitor",
+    "aso-specialist": "marketer-aso",
+    "aso": "marketer-aso",
+    "data-analyst": "marketer-data",
+    "data": "marketer-data",
+    "editor": "marketer-editor",
+    # Core Department Aliases
+    "dev": "fullstack-dev",
+    "engineer": "fullstack-dev",
+    "fullstack": "fullstack-dev",
+    "devops": "devops-agent",
+    "infra": "devops-agent",
+    "qa": "qa-tester",
+    "tester": "qa-tester",
+    "billing": "billing-officer",
+    "finance": "billing-officer",
+    "legal": "legal-officer",
+    "compliance": "legal-officer",
+    "support": "support-agent",
+    "success": "support-agent",
+    "monitor": "site-monitor",
+    "uptime": "site-monitor",
+}
+
+
 class SwarmAgent:
     def __init__(self, agent_id: str, name: str, role: str, system_prompt: str, privkey: str):
         self.agent_id = agent_id
@@ -203,7 +262,18 @@ class SwarmOrchestrator:
 
         # 1. Primary: Google Gemini (3.7 Flash for Advanced Roles, 3.6/3.5 Flash for Operational Roles)
         if GOOGLE_API_KEY:
-            is_advanced_role = agent.agent_id in ["ceo", "cto", "legal-officer", "marketer-research"]
+            is_advanced_role = agent.agent_id in [
+                "ceo",
+                "cto",
+                "legal-officer",
+                "marketer-head",
+                "marketer-pricing",
+                "marketer-seo",
+                "marketer-data",
+                "marketer-competitor",
+                "marketer-editor",
+                "marketer-research",
+            ]
             gemini_candidates = [
                 PRO_GEMINI_MODEL,
                 "gemini-3.7-flash",
@@ -516,33 +586,69 @@ class SwarmOrchestrator:
         target_agent = self.agents.get("ceo")
         lower_content = content.lower()
 
+        # 1. Check exact agent ID or full name mention
         for agent_id, agent in self.agents.items():
             if f"@{agent_id}" in lower_content or f"@{agent.name.lower()}" in lower_content:
                 target_agent = agent
                 break
         else:
-            # Department keyword routing
-            if any(k in lower_content for k in ["code", "bug", "build", "api", "database", "backend", "frontend"]):
-                target_agent = self.agents.get("fullstack-dev", target_agent)
-            elif any(k in lower_content for k in ["architecture", "tech stack", "rfc"]):
-                target_agent = self.agents.get("cto", target_agent)
-            elif any(k in lower_content for k in ["test", "qa", "verify", "regression"]):
-                target_agent = self.agents.get("qa-tester", target_agent)
-            elif any(k in lower_content for k in ["pdf", "proposal", "quote", "document", "sow"]):
-                if any(k in lower_content for k in ["quote", "pricing", "naira", "estimate"]):
+            # 2. Check friendly alias mentions (@cmo, @copywriter, @seo, @media-buyer, etc.)
+            for alias, mapped_id in AGENT_ALIASES.items():
+                if f"@{alias}" in lower_content:
+                    if mapped_id in self.agents:
+                        target_agent = self.agents[mapped_id]
+                        break
+            else:
+                # 3. Department & Marketing Swarm Keyword Routing
+                if any(k in lower_content for k in ["site audit", "audit score", "cro audit", "conversion friction", "scored 0-100", "site score"]):
+                    target_agent = self.agents.get("marketer-site-auditor", target_agent)
+                elif any(k in lower_content for k in ["llms.txt", "geo", "seo lead", "search ranking", "perplexity", "google overview", "generative engine"]):
+                    target_agent = self.agents.get("marketer-seo", target_agent)
+                elif any(k in lower_content for k in ["graded copy", "copywriter", "sales letter", "vsl script", "headline copy", "grade copy", "direct response copy"]):
+                    target_agent = self.agents.get("marketer-copywriter", target_agent)
+                elif any(k in lower_content for k in ["creative strategist", "maxfusion", "ai ad", "visual ad", "ad storyboard", "ad creative", "video ad concept"]):
+                    target_agent = self.agents.get("marketer-creative", target_agent)
+                elif any(k in lower_content for k in ["media buyer", "ad fatigue", "dead audience", "kill call", "roas", "cpa threshold", "ad spend", "kill calls"]):
+                    target_agent = self.agents.get("marketer-media-buyer", target_agent)
+                elif any(k in lower_content for k in ["email sequence", "drip campaign", "email schedule", "welcome sequence", "soap opera sequence", "email marketer"]):
+                    target_agent = self.agents.get("marketer-email", target_agent)
+                elif any(k in lower_content for k in ["survive the feed", "social manager", "linkedin post", "twitter thread", "x thread", "viral hook", "feed post"]):
+                    target_agent = self.agents.get("marketer-social", target_agent)
+                elif any(k in lower_content for k in ["product hunt", "launch manager", "hour by hour", "launch day", "maker comment", "gtm launch"]):
+                    target_agent = self.agents.get("marketer-launch", target_agent)
+                elif any(k in lower_content for k in ["pricing strategist", "pricing tier", "what to charge", "grand slam offer", "hormozi", "value equation", "pricing model", "tiers, offers"]):
+                    target_agent = self.agents.get("marketer-pricing", target_agent)
+                elif any(k in lower_content for k in ["competitor analyst", "what they run on meta", "meta ad library", "competitor ad", "competitor teardown", "competitor angle"]):
+                    target_agent = self.agents.get("marketer-competitor", target_agent)
+                elif any(k in lower_content for k in ["aso specialist", "app store", "play store", "play listing", "app store optimization", "app subtitle", "app keyword", "aso"]):
+                    target_agent = self.agents.get("marketer-aso", target_agent)
+                elif any(k in lower_content for k in ["data analyst", "a/b test", "ab test", "statistical significance", "marketing dashboard", "cac", "ltv", "cohort analysis", "dashboards"]):
+                    target_agent = self.agents.get("marketer-data", target_agent)
+                elif any(k in lower_content for k in ["ai slop", "cuts the ai slop", "anti-slop", "editorial review", "edit this", "cut the fluff", "slop check", "slop before anything ships"]):
+                    target_agent = self.agents.get("marketer-editor", target_agent)
+                elif any(k in lower_content for k in ["head of marketing", "marketing mastermind", "cmo", "marketing mastermind"]):
+                    target_agent = self.agents.get("marketer-head", target_agent)
+                elif any(k in lower_content for k in ["code", "bug", "build", "api", "database", "backend", "frontend"]):
+                    target_agent = self.agents.get("fullstack-dev", target_agent)
+                elif any(k in lower_content for k in ["architecture", "tech stack", "rfc"]):
+                    target_agent = self.agents.get("cto", target_agent)
+                elif any(k in lower_content for k in ["test", "qa", "verify", "regression"]):
+                    target_agent = self.agents.get("qa-tester", target_agent)
+                elif any(k in lower_content for k in ["pdf", "proposal", "quote", "document", "sow"]):
+                    if any(k in lower_content for k in ["quote", "pricing", "naira", "estimate"]):
+                        target_agent = self.agents.get("billing-officer", target_agent)
+                    elif any(k in lower_content for k in ["nda", "contract", "legal"]):
+                        target_agent = self.agents.get("legal-officer", target_agent)
+                    else:
+                        target_agent = self.agents.get("marketer-content", target_agent)
+                elif any(k in lower_content for k in ["marketing", "lead", "seo", "campaign", "growth"]):
+                    target_agent = self.agents.get("marketer-growth", target_agent)
+                elif any(k in lower_content for k in ["invoice", "billing", "payment", "naira", "pricing"]):
                     target_agent = self.agents.get("billing-officer", target_agent)
-                elif any(k in lower_content for k in ["nda", "contract", "legal"]):
+                elif any(k in lower_content for k in ["contract", "nda", "terms", "legal", "procurement"]):
                     target_agent = self.agents.get("legal-officer", target_agent)
-                else:
-                    target_agent = self.agents.get("marketer-content", target_agent)
-            elif any(k in lower_content for k in ["marketing", "lead", "seo", "campaign", "growth"]):
-                target_agent = self.agents.get("marketer-growth", target_agent)
-            elif any(k in lower_content for k in ["invoice", "billing", "payment", "naira", "pricing"]):
-                target_agent = self.agents.get("billing-officer", target_agent)
-            elif any(k in lower_content for k in ["contract", "nda", "terms", "legal", "procurement"]):
-                target_agent = self.agents.get("legal-officer", target_agent)
-            elif any(k in lower_content for k in ["deploy", "docker", "vps", "server", "k8s", "caddy", "nginx"]):
-                target_agent = self.agents.get("devops-agent", target_agent)
+                elif any(k in lower_content for k in ["deploy", "docker", "vps", "server", "k8s", "caddy", "nginx"]):
+                    target_agent = self.agents.get("devops-agent", target_agent)
 
         if target_agent and content:
             response_text, tool_trace = await self.run_agent_with_tools(target_agent, content)
