@@ -7,9 +7,11 @@ command -v openssl >/dev/null
 docker compose version >/dev/null
 if [[ ! -f .env ]]; then
   umask 077
-  printf 'PAPERCLIP_REF=50b932a142216331b8d476042b454bc123739c40\nPAPERCLIP_PUBLIC_URL=http://localhost:3100\nPOSTGRES_PASSWORD=%s\nBETTER_AUTH_SECRET=%s\nPAPERCLIP_TOOL_ACTION_SIGNING_SECRET=%s\n' \
+  printf 'PAPERCLIP_REF=50b932a142216331b8d476042b454bc123739c40\nPAPERCLIP_PUBLIC_URL=https://company.bonifadetechnologies.com\nPOSTGRES_PASSWORD=%s\nBETTER_AUTH_SECRET=%s\nPAPERCLIP_TOOL_ACTION_SIGNING_SECRET=%s\n' \
     "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" "$(openssl rand -hex 32)" > .env
 fi
+# Upgrade the original localhost default without rotating existing secrets.
+sed -i 's|^PAPERCLIP_PUBLIC_URL=http://localhost:3100$|PAPERCLIP_PUBLIC_URL=https://company.bonifadetechnologies.com|' .env
 chmod 600 .env
 ref=$(sed -n 's/^PAPERCLIP_REF=//p' .env)
 [[ "$ref" =~ ^[0-9a-f]{40}$ ]] || { echo 'PAPERCLIP_REF must be a full commit SHA'; exit 1; }

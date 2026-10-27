@@ -29,18 +29,20 @@ Do not run the old root install.sh to install Paperclip; that installs Buzz.
 
 ## Access and first administrator
 
-The server listens on VPS loopback only; PostgreSQL has no published port.
-From your computer, substitute your SSH target:
+The canonical URL is https://company.bonifadetechnologies.com. Configure your host
+Nginx HTTPS reverse proxy to forward to http://127.0.0.1:3100, preserving the Host
+header and forwarding X-Forwarded-Proto and X-Forwarded-For. Support WebSocket
+upgrades. PostgreSQL has no published port.
 
-```sh
-ssh -L 3100:127.0.0.1:3100 user@YOUR_VPS
-```
+The installer creates paperclip/.env automatically. Re-running upgrades the original
+http://localhost:3100 URL to this domain while preserving secrets and custom URLs.
+Authenticated/private mode remains enabled. Complete the first account sign-in and
+Claim this instance yourself before making the site generally accessible.
 
-Open http://localhost:3100, create/sign in to your account, and use **Claim this
-instance** for the first administrator. Keep the SSH tunnel open. This follows
-upstream authenticated/private deployment guidance. For a domain later, configure
-HTTPS and PAPERCLIP_PUBLIC_URL before exposing the server; do not switch to public
-exposure without following upstream's bootstrap-invite instructions.
+All tracked company sources, department prompts, marketing Markdown and brand assets
+are included when cloning this repository. The installer builds a lexical knowledge
+index and mounts the checkout read-only at /company for local agents. These files
+are not automatically imported as UI documents, companies or agents.
 
 ## Company, logos and agents
 
