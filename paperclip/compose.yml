@@ -15,11 +15,7 @@ services:
       timeout: 5s
       retries: 30
   server:
-    build:
-      context: ./upstream
-      dockerfile: Dockerfile
-      args:
-        PAPERCLIP_BUILD_COMMIT: ${PAPERCLIP_REF:?Set pinned upstream commit}
+    image: ghcr.io/paperclipai/paperclip:sha-50b932a142216331b8d476042b454bc123739c40
     restart: unless-stopped
     pids_limit: 2048
     stop_grace_period: 90s

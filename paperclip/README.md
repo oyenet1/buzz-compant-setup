@@ -8,8 +8,8 @@ knowledge. Buzz messaging bridges, PDF/video tools and Nostr history are not mig
 ## Install on your Linux VPS
 
 Prerequisites: Git, Python 3 with SQLite FTS5, OpenSSL, Docker Engine and the Docker
-Compose plugin. Allow several GB of free RAM and disk for the upstream source build;
-actual requirements depend on agent concurrency. The models run through providers,
+Compose plugin. The installer downloads the official prebuilt image instead of compiling source;
+runtime RAM and disk requirements depend on agent concurrency and image size. The models run through providers,
 not as local model weights on your VPS.
 
 Clone this repository on your VPS, or transfer this checkout.
@@ -22,8 +22,8 @@ bash paperclip/setup.sh
 ```
 
 The installer creates paperclip/.env with independent persistent secrets, pins
-upstream Paperclip to commit 50b932a142216331b8d476042b454bc123739c40, builds the
-knowledge index, and builds/starts the containers. Re-running preserves secrets.
+the official Paperclip image to commit 50b932a142216331b8d476042b454bc123739c40, builds the
+knowledge index, and pulls/starts the containers without a source build. Re-running preserves secrets.
 Keep the project directory private: its data includes internal company information.
 Do not run the old root install.sh to install Paperclip; that installs Buzz.
 
@@ -99,7 +99,7 @@ Search results preserve file:line citations; prompts require retrieval before dr
 Back up the PostgreSQL database, paperclip-data volume, paperclip/.env and company
 sources together. Store backups outside this VPS and test restores. Do not use
 docker compose down -v on a deployment you want to retain. Review upstream changes
-and back up before changing PAPERCLIP_REF and rebuilding.
+and back up before changing the image reference in compose.yml.
 
 ## Validation limits and sources
 
