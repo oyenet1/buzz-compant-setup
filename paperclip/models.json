@@ -1,0 +1,14 @@
+{
+  "status": "Deployment plan; apply and validate in Paperclip after provider connections are configured",
+  "default": {"provider": "openai", "model": "gpt-6.1-sol", "adapter": "codex_local"},
+  "marketing": {
+    "marketer-research": {"provider": "google", "model": "gemini-3.8-flash", "adapter": "gemini_local"},
+    "marketer-growth": {"provider": "google", "model": "gemini-3.8-flash", "adapter": "gemini_local"},
+    "marketer-content": {"provider": "meta", "model": "muse-spark-1.3-contributor", "adapter": "requires validated Meta-capable runtime", "data_policy": "Only content approved for Meta training; do not send private company knowledge or client data"}
+  },
+  "sources": [
+    "https://developers.openai.com/api/docs/models/gpt-6.1-sol",
+    "https://ai.google.dev/gemini-api/docs/models/gemini-3.8-flash",
+    "https://dev.meta.ai/docs/models"
+  ]
+}
