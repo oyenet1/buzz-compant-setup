@@ -30,9 +30,9 @@ Do not run the old root install.sh to install Paperclip; that installs Buzz.
 ## Access and first administrator
 
 The canonical URL is https://company.bonifadetechnologies.com. Configure your host
-Nginx HTTPS reverse proxy to forward to http://127.0.0.1:3100, preserving the Host
+Nginx HTTPS reverse proxy to forward to http://127.0.0.1:13100, preserving the Host
 header and forwarding X-Forwarded-Proto and X-Forwarded-For. Support WebSocket
-upgrades. PostgreSQL has no published port.
+upgrades. PostgreSQL has no published port. The host port defaults to 13100; set PAPERCLIP_PORT in paperclip/.env to override it. The container continues listening on port 3100.
 
 The installer creates paperclip/.env automatically. Re-running upgrades the original
 http://localhost:3100 URL to this domain while preserving secrets and custom URLs.

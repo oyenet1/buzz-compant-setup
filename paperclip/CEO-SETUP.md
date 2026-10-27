@@ -8,10 +8,10 @@ repository. That configuration mounts the company files at /company.
 From your computer, replace the SSH username and VPS address:
 
 ```sh
-ssh -L 3100:127.0.0.1:3100 YOUR_USER@YOUR_VPS_IP
+ssh -L 13100:127.0.0.1:13100 YOUR_USER@YOUR_VPS_IP
 ```
 
-Keep the tunnel open. Visit http://localhost:3100 and sign in to your company.
+Keep the tunnel open. Visit https://company.bonifadetechnologies.com and sign in to your company.
 
 ## 2. Connect your OpenAI account
 

@@ -20,7 +20,7 @@ services:
     pids_limit: 2048
     stop_grace_period: 90s
     ports:
-      - "127.0.0.1:3100:3100"
+      - "127.0.0.1:${PAPERCLIP_PORT:-13100}:3100"
     environment:
       HOST: 0.0.0.0
       PORT: "3100"
